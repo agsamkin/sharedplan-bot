@@ -5,8 +5,9 @@ from aiogram import Bot, Dispatcher
 from alembic import command
 from alembic.config import Config
 
+from app.bot.callbacks import event_confirm as event_confirm_cb
 from app.bot.callbacks import space_select as space_select_cb
-from app.bot.handlers import help, space, start
+from app.bot.handlers import event, events_list, help, space, start
 from app.bot.middlewares.db_session import DbSessionMiddleware
 from app.config import settings
 
@@ -28,7 +29,10 @@ async def main() -> None:
     dp.include_router(start.router)
     dp.include_router(help.router)
     dp.include_router(space.router)
+    dp.include_router(events_list.router)
+    dp.include_router(event_confirm_cb.router)
     dp.include_router(space_select_cb.router)
+    dp.include_router(event.router)
 
     bot_info = await bot.get_me()
     logger.info("Бот @%s запускается...", bot_info.username)

@@ -1,11 +1,15 @@
 import logging
+from datetime import date, time
 from uuid import UUID
 
 from aiogram import F, Router
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.keyboards.confirm import delete_space_confirm_keyboard
+from app.bot.formatting import format_confirmation
+from app.bot.keyboards.confirm import delete_space_confirm_keyboard, event_confirm_keyboard
+from app.bot.states.create_event import CreateEvent
 from app.services import space_service
 
 logger = logging.getLogger(__name__)
@@ -28,7 +32,7 @@ def format_space_info(space_name: str, members: list[dict], invite_link: str) ->
 
 @router.callback_query(F.data.startswith("space_select:"))
 async def on_space_select(
-    callback: CallbackQuery, session: AsyncSession, bot_username: str
+    callback: CallbackQuery, session: AsyncSession, bot_username: str, state: FSMContext,
 ) -> None:
     parts = callback.data.split(":")
     if len(parts) < 3:
@@ -84,5 +88,20 @@ async def on_space_select(
             "Все события и напоминания будут удалены.",
             reply_markup=delete_space_confirm_keyboard(space_id),
         )
+
+    elif action == "event":
+        data = await state.get_data()
+        event_date = date.fromisoformat(data["parsed_date"])
+        event_time = time.fromisoformat(data["parsed_time"]) if data.get("parsed_time") else None
+        await state.update_data(space_id=str(space_id))
+        await state.set_state(CreateEvent.waiting_for_confirm)
+        await callback.message.edit_text(
+            format_confirmation(data["parsed_title"], event_date, event_time),
+            reply_markup=event_confirm_keyboard(),
+        )
+
+    elif action == "events":
+        from app.bot.handlers.events_list import _send_events_list
+        await _send_events_list(callback.message, session, space_id, edit=True)
 
     await callback.answer()
