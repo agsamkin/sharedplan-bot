@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time as time_module
-from datetime import date, time
+from datetime import date, datetime, time, timezone, timedelta
 from typing import Literal, Optional
 
 from openai import AsyncOpenAI, APIStatusError, APITimeoutError, APIConnectionError
@@ -120,10 +120,18 @@ def _validate_response(raw: str) -> ParsedEvent:
         raise ParseError("invalid_json", f"Invalid LLM response: {e}") from e
 
 
+def _now_in_tz() -> datetime:
+    """Текущее время в настроенном часовом поясе."""
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo(settings.TIMEZONE))
+
+
 async def parse_event(user_text: str) -> ParsedEvent:
     """Парсинг текста пользователя в структурированное событие через LLM."""
-    today = date.today()
-    messages = build_messages(user_text, today)
+    now = _now_in_tz()
+    today = now.date()
+    current_time = now.time().replace(second=0, microsecond=0)
+    messages = build_messages(user_text, today, current_time)
 
     raw = await _call_llm(messages)
 
@@ -134,6 +142,6 @@ async def parse_event(user_text: str) -> ParsedEvent:
 
     # Одна повторная попытка с усиленной инструкцией
     logger.info("LLM returned invalid JSON, retrying with reinforced prompt")
-    messages_reinforced = build_messages_reinforced(user_text, today)
+    messages_reinforced = build_messages_reinforced(user_text, today, current_time)
     raw = await _call_llm(messages_reinforced)
     return _validate_response(raw)

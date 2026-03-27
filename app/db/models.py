@@ -25,7 +25,7 @@ DEFAULT_REMINDER_SETTINGS = {
     "1h": False,
     "30m": False,
     "15m": True,
-    "0m": False,
+    "0m": True,
 }
 
 

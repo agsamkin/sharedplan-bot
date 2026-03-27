@@ -11,7 +11,7 @@ from app.bot.filters.not_command import NotCommandFilter
 from app.bot.formatting import PARSE_ERROR_MESSAGES, format_confirmation, format_notification
 from app.bot.keyboards.confirm import event_confirm_keyboard
 from app.bot.states.create_event import CreateEvent
-from app.services import event_service, space_service
+from app.services import event_service, reminder_service, space_service
 from app.services.llm_parser import ParseError, parse_event
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ async def on_event_confirm(
     event_date = date.fromisoformat(data["parsed_date"])
     event_time = time.fromisoformat(data["parsed_time"]) if data.get("parsed_time") else None
 
-    await event_service.create_event(
+    event = await event_service.create_event(
         session=session,
         space_id=space_id,
         title=data["parsed_title"],
@@ -43,6 +43,8 @@ async def on_event_confirm(
         created_by=callback.from_user.id,
         raw_input=data.get("raw_input"),
     )
+
+    await reminder_service.create_reminders_for_event(session, event, space_id)
 
     await callback.message.edit_text("✅ Событие опубликовано!")
     await state.clear()
