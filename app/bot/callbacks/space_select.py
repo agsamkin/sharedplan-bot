@@ -93,10 +93,11 @@ async def on_space_select(
         data = await state.get_data()
         event_date = date.fromisoformat(data["parsed_date"])
         event_time = time.fromisoformat(data["parsed_time"]) if data.get("parsed_time") else None
+        transcript = data.get("transcript")
         await state.update_data(space_id=str(space_id))
         await state.set_state(CreateEvent.waiting_for_confirm)
         await callback.message.edit_text(
-            format_confirmation(data["parsed_title"], event_date, event_time),
+            format_confirmation(data["parsed_title"], event_date, event_time, transcript=transcript),
             reply_markup=event_confirm_keyboard(),
         )
 

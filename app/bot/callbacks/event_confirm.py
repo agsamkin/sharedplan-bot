@@ -105,6 +105,7 @@ async def handle_event_edit(
         parsed_date=parsed.event_date.isoformat(),
         parsed_time=parsed.event_time.strftime("%H:%M") if parsed.event_time else None,
         raw_input=message.text,
+        transcript=None,
     )
     await state.set_state(CreateEvent.waiting_for_confirm)
 

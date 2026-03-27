@@ -7,6 +7,14 @@ PARSE_ERROR_MESSAGES = {
     "rate_limit": "Сервис временно недоступен, попробуй через минуту.",
 }
 
+STT_ERROR_MESSAGES = {
+    "timeout": "Не удалось распознать голос. Попробуй ещё раз или напиши текстом.",
+    "service_unavailable": "Не удалось распознать голос. Попробуй ещё раз или напиши текстом.",
+    "empty_result": "Не удалось распознать речь. Попробуй записать сообщение ещё раз.",
+    "auth_error": "Сервис распознавания временно недоступен.",
+    "bad_request": "Не удалось распознать голос. Попробуй ещё раз или напиши текстом.",
+}
+
 MONTHS = [
     "", "января", "февраля", "марта", "апреля", "мая", "июня",
     "июля", "августа", "сентября", "октября", "ноября", "декабря",
@@ -28,13 +36,16 @@ def format_date_relative(d: date) -> str:
     return f"{d.day} {MONTHS[d.month]}"
 
 
-def format_confirmation(title: str, event_date: date, event_time: time | None) -> str:
+def format_confirmation(
+    title: str, event_date: date, event_time: time | None, transcript: str | None = None,
+) -> str:
     """Карточка подтверждения события."""
-    lines = [
-        "📌 Событие:",
-        f"📝 {title}",
-        f"📅 {format_date_human(event_date)}",
-    ]
+    lines = []
+    if transcript:
+        lines.append(f"🎤 Распознано: «{transcript}»\n")
+    lines.append("📌 Событие:")
+    lines.append(f"📝 {title}")
+    lines.append(f"📅 {format_date_human(event_date)}")
     if event_time is not None:
         lines.append(f"⏰ {event_time.strftime('%H:%M')}")
     lines.append("\nОпубликовать?")
