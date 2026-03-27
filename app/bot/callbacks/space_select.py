@@ -7,7 +7,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.formatting import format_confirmation, format_date_human
+from app.bot.formatting import format_confirmation, format_date_with_weekday
 from app.bot.keyboards.confirm import (
     delete_space_confirm_keyboard,
     event_confirm_keyboard,
@@ -100,10 +100,11 @@ async def on_space_select(
         transcript = data.get("transcript")
         await state.update_data(space_id=str(space_id))
 
-        if event_date < date.today():
+        from app.bot.handlers.event import _is_event_in_past
+        if _is_event_in_past(event_date, event_time):
             await state.set_state(CreateEvent.waiting_for_past_confirm)
             await callback.message.edit_text(
-                f"⚠️ Дата уже прошла ({format_date_human(event_date)}).\n\n"
+                f"⚠️ Дата уже прошла ({format_date_with_weekday(event_date)}).\n\n"
                 f"📝 {data['parsed_title']}\n\n"
                 "Всё равно создать?",
                 reply_markup=event_past_date_keyboard(),

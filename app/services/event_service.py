@@ -1,10 +1,12 @@
 import logging
-from datetime import date, time
+from datetime import date, datetime, time
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import and_, case, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from zoneinfo import ZoneInfo
 
+from app.config import settings
 from app.db.models import Event
 
 logger = logging.getLogger(__name__)
@@ -38,12 +40,29 @@ async def get_upcoming_events(
 ) -> list[Event]:
     """Получить ближайшие будущие события пространства.
 
+    Исключает события с прошедшим временем (для сегодняшних).
     Сортировка: event_date ASC, event_time ASC NULLS FIRST.
     """
-    today = date.today()
+    tz = ZoneInfo(settings.TIMEZONE)
+    now = datetime.now(tz)
+    today = now.date()
+    current_time = now.time()
+
     stmt = (
         select(Event)
-        .where(Event.space_id == space_id, Event.event_date >= today)
+        .where(
+            Event.space_id == space_id,
+            or_(
+                Event.event_date > today,
+                and_(
+                    Event.event_date == today,
+                    or_(
+                        Event.event_time.is_(None),
+                        Event.event_time >= current_time,
+                    ),
+                ),
+            ),
+        )
         .order_by(Event.event_date.asc(), Event.event_time.asc().nullsfirst())
         .limit(limit)
     )

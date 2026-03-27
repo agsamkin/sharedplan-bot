@@ -1,5 +1,5 @@
 import logging
-from datetime import date
+from datetime import date, datetime
 
 from aiogram import Bot, Router
 from aiogram.filters import StateFilter
@@ -8,15 +8,28 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.filters.not_command import NotCommandFilter
-from app.bot.formatting import PARSE_ERROR_MESSAGES, format_confirmation, format_date_human
+from app.bot.formatting import PARSE_ERROR_MESSAGES, format_confirmation, format_date_with_weekday
 from app.bot.keyboards.confirm import event_confirm_keyboard, event_past_date_keyboard
 from app.bot.keyboards.space_select import space_select_keyboard
 from app.bot.states.create_event import CreateEvent
 from app.services import space_service
+from app.config import settings
 from app.services.llm_parser import ParseError, ParsedEvent, parse_event
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+
+def _is_event_in_past(event_date: date, event_time=None) -> bool:
+    """Проверить, прошло ли событие: учитывает и дату, и время."""
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo(settings.TIMEZONE)
+    now = datetime.now(tz)
+    if event_date < now.date():
+        return True
+    if event_date == now.date() and event_time is not None:
+        return event_time < now.time()
+    return False
 
 
 async def _show_confirmation_or_past_warning(
@@ -26,10 +39,10 @@ async def _show_confirmation_or_past_warning(
     transcript: str | None = None,
 ) -> None:
     """Показать карточку подтверждения или предупреждение о прошедшей дате."""
-    if parsed.event_date < date.today():
+    if _is_event_in_past(parsed.event_date, parsed.event_time):
         await state.set_state(CreateEvent.waiting_for_past_confirm)
         await message.answer(
-            f"⚠️ Дата уже прошла ({format_date_human(parsed.event_date)}).\n\n"
+            f"⚠️ Дата уже прошла ({format_date_with_weekday(parsed.event_date)}).\n\n"
             f"📝 {parsed.title}\n\n"
             "Всё равно создать?",
             reply_markup=event_past_date_keyboard(),
@@ -58,8 +71,7 @@ async def process_parsed_event(
 
     if not spaces:
         await message.answer(
-            "Ты пока не состоишь ни в одном пространстве.\n"
-            "Создай новое через /newspace"
+            "У тебя пока нет пространств. Создай первое через /newspace!"
         )
         return
 

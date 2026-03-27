@@ -58,8 +58,7 @@ async def cmd_events(message: Message, session: AsyncSession) -> None:
 
     if not spaces:
         await message.answer(
-            "Ты пока не состоишь ни в одном пространстве.\n"
-            "Создай новое через /newspace"
+            "У тебя пока нет пространств. Создай первое через /newspace!"
         )
         return
 

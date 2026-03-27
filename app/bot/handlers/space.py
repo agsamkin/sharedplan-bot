@@ -24,7 +24,7 @@ router = Router()
 async def cmd_newspace(message: Message, state: FSMContext) -> None:
     logger.info("/newspace user_id=%d", message.from_user.id)
     await state.set_state(CreateSpace.waiting_for_name)
-    await message.answer("Введи название пространства:")
+    await message.answer("Как назовём пространство?")
 
 
 @router.message(CreateSpace.waiting_for_name)
@@ -36,10 +36,10 @@ async def process_space_name(
 ) -> None:
     name = (message.text or "").strip()
     if not name:
-        await message.answer("Название не может быть пустым. Введи название:")
+        await message.answer("Название не может быть пустым. Введи название пространства:")
         return
     if len(name) > 255:
-        await message.answer("Слишком длинное название (макс. 255 символов). Попробуй короче:")
+        await message.answer("Слишком длинное название. Попробуй покороче (до 255 символов).")
         return
 
     space = await space_service.create_space(session, message.from_user.id, name)
@@ -49,9 +49,9 @@ async def process_space_name(
     invite_link = f"https://t.me/{bot_info.username}?start=join_{space.invite_code}"
 
     await message.answer(
-        f"Пространство «{space.name}» создано!\n\n"
+        f"✅ Пространство «{space.name}» создано!\n\n"
         f"🔗 Ссылка для приглашения:\n{invite_link}\n\n"
-        "Отправь эту ссылку тем, кого хочешь пригласить."
+        "Отправь эту ссылку тем, кого хочешь добавить."
     )
 
 
@@ -64,15 +64,15 @@ async def cmd_spaces(message: Message, session: AsyncSession) -> None:
     spaces = await space_service.get_user_spaces(session, message.from_user.id)
     if not spaces:
         await message.answer(
-            "Ты пока не состоишь ни в одном пространстве.\n"
-            "Создай новое через /newspace"
+            "У тебя пока нет пространств. Создай первое через /newspace!"
         )
         return
 
     lines = ["📂 Твои пространства:\n"]
     for i, s in enumerate(spaces, 1):
-        role_text = "админ" if s["role"] == "admin" else "участник"
-        lines.append(f"{i}. {s['name']} — {role_text}, {s['member_count']} чел.")
+        role_icon = "👑" if s["role"] == "admin" else "👤"
+        count = s["member_count"]
+        lines.append(f"{i}. {role_icon} {s['name']} ({count} уч.)")
     await message.answer("\n".join(lines))
 
 
@@ -86,7 +86,7 @@ async def cmd_space_info(
     logger.info("/space_info user_id=%d", message.from_user.id)
     spaces = await space_service.get_user_spaces(session, message.from_user.id)
     if not spaces:
-        await message.answer("Ты пока не состоишь ни в одном пространстве.")
+        await message.answer("У тебя пока нет пространств. Создай первое через /newspace!")
         return
 
     if len(spaces) == 1:

@@ -150,14 +150,30 @@ def format_reminder_message(
     reminder_type: str,
 ) -> str:
     """Форматировать текст Telegram-сообщения напоминания."""
+    from app.bot.formatting import format_date_short_with_weekday
+
     relative = RELATIVE_LABELS.get(reminder_type, reminder_type)
-    lines = [f"🔔 Напоминание!\n", f"📝 {event_title}"]
+    lines = ["🔔 Напоминание!\n", f"📝 {event_title}"]
 
     if event_time is None:
-        lines.append(f"📅 {relative}")
-    else:
+        # Событие без времени (только 1d): «Завтра, 5 апреля»
+        date_str = format_date_short_with_weekday(event_date)
+        lines.append(f"📅 {relative}, {date_str}")
+    elif reminder_type == "1d":
+        # За 1 день с временем: «Завтра в 19:00»
+        time_str = event_time.strftime("%H:%M")
+        lines.append(f"⏰ {relative} в {time_str}")
+        lines.append(f"📅 {format_date_short_with_weekday(event_date)}")
+    elif reminder_type == "0m":
+        # В момент события: «Сейчас (14:00)»
         time_str = event_time.strftime("%H:%M")
         lines.append(f"⏰ {relative} ({time_str})")
+        lines.append(f"📅 {format_date_short_with_weekday(event_date)}")
+    else:
+        # Обычное напоминание: «Через 15 минут (19:00)»
+        time_str = event_time.strftime("%H:%M")
+        lines.append(f"⏰ {relative} ({time_str})")
+        lines.append(f"📅 {format_date_short_with_weekday(event_date)}")
 
     lines.append(f"📍 Пространство: {space_name}")
     return "\n".join(lines)

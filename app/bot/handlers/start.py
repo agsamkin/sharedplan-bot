@@ -39,7 +39,7 @@ async def cmd_start_join(
     payload = command.args or ""
     if not payload.startswith("join_"):
         # Не join deep link — показываем приветствие
-        await _send_welcome(message)
+        await _send_welcome(message, session)
         return
 
     invite_code = payload[5:]  # убираем "join_"
@@ -80,13 +80,26 @@ async def cmd_start_join(
 async def cmd_start(message: Message, session: AsyncSession) -> None:
     logger.info("/start user_id=%d", message.from_user.id)
     await _upsert_user(session, message)
-    await _send_welcome(message)
+    await _send_welcome(message, session)
 
 
-async def _send_welcome(message: Message) -> None:
-    await message.answer(
-        "Привет! Я бот для совместного планирования событий.\n\n"
-        "Создай пространство командой /newspace, "
-        "пригласи участников по ссылке и добавляй события текстом или голосом.\n\n"
-        "Введи /help для списка команд."
+async def _send_welcome(message: Message, session: AsyncSession) -> None:
+    spaces = await space_service.get_user_spaces(session, message.from_user.id)
+
+    intro = (
+        "Привет! Я помогу организовать совместные планы.\n\n"
+        "Что я умею:\n"
+        "📅 Создавать события из текста или голосовых сообщений\n"
+        "👥 Объединять участников в пространства с общим календарём\n"
+        "🔔 Отправлять персональные напоминания\n"
     )
+
+    if spaces:
+        names = ", ".join(f"«{s['name']}»" for s in spaces)
+        intro += f"\nТвои пространства: {names}\n"
+        intro += "\nОтправь текст или голосовое, чтобы создать событие.\n"
+    else:
+        intro += "\nНачни с создания пространства — /newspace\n"
+
+    intro += "Полный список команд — /help"
+    await message.answer(intro)
