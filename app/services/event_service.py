@@ -1,6 +1,5 @@
 import logging
-from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, time
 from uuid import UUID
 
 from sqlalchemy import select
@@ -9,48 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Event
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ParsedEvent:
-    title: str
-    date: date
-    time: time | None
-
-
-async def parse_event_text(text: str) -> ParsedEvent:
-    """Парсинг структурированного формата: название, ДД.ММ.ГГГГ[, ЧЧ:ММ].
-
-    Raises ValueError при невалидном формате.
-    """
-    parts = [p.strip() for p in text.split(",")]
-    if len(parts) < 2:
-        raise ValueError(
-            "Формат: название, ДД.ММ.ГГГГ, ЧЧ:ММ\n"
-            "Время можно не указывать."
-        )
-
-    title = parts[0]
-    if not title:
-        raise ValueError("Название события не может быть пустым.")
-
-    try:
-        event_date = datetime.strptime(parts[1], "%d.%m.%Y").date()
-    except ValueError:
-        raise ValueError(
-            f"Неверный формат даты: «{parts[1]}». Используй ДД.ММ.ГГГГ"
-        )
-
-    event_time: time | None = None
-    if len(parts) >= 3 and parts[2]:
-        try:
-            event_time = datetime.strptime(parts[2], "%H:%M").time()
-        except ValueError:
-            raise ValueError(
-                f"Неверный формат времени: «{parts[2]}». Используй ЧЧ:ММ"
-            )
-
-    return ParsedEvent(title=title, date=event_date, time=event_time)
 
 
 async def create_event(

@@ -8,11 +8,11 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.filters.not_command import NotCommandFilter
-from app.bot.formatting import FORMAT_HINT, format_confirmation, format_notification
+from app.bot.formatting import PARSE_ERROR_MESSAGES, format_confirmation, format_notification
 from app.bot.keyboards.confirm import event_confirm_keyboard
 from app.bot.states.create_event import CreateEvent
 from app.services import event_service, space_service
-from app.services.event_service import parse_event_text
+from app.services.llm_parser import ParseError, parse_event
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -81,32 +81,34 @@ async def on_event_cancel(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "event_edit")
 async def on_event_edit(callback: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(CreateEvent.waiting_for_edit)
-    await callback.message.edit_text(
-        f"Отправь исправленный вариант.\n\n{FORMAT_HINT}"
-    )
+    await callback.message.edit_text("Отправь исправленный вариант.")
     await callback.answer()
 
 
 @router.message(CreateEvent.waiting_for_edit, NotCommandFilter())
 async def handle_event_edit(
-    message: Message, state: FSMContext, session: AsyncSession,
+    message: Message, state: FSMContext, session: AsyncSession, bot: Bot,
 ) -> None:
     """Повторный ввод после нажатия «Изменить»."""
+    await bot.send_chat_action(message.chat.id, "typing")
+
     try:
-        parsed = await parse_event_text(message.text)
-    except ValueError as e:
-        await message.answer(f"❌ {e}\n\n{FORMAT_HINT}")
+        parsed = await parse_event(message.text)
+    except ParseError as e:
+        await message.answer(f"❌ {PARSE_ERROR_MESSAGES.get(e.error_type, str(e))}")
+        # Остаёмся в waiting_for_edit — пользователь может попробовать снова
+        await state.set_state(CreateEvent.waiting_for_edit)
         return
 
     await state.update_data(
         parsed_title=parsed.title,
-        parsed_date=parsed.date.isoformat(),
-        parsed_time=parsed.time.strftime("%H:%M") if parsed.time else None,
+        parsed_date=parsed.event_date.isoformat(),
+        parsed_time=parsed.event_time.strftime("%H:%M") if parsed.event_time else None,
         raw_input=message.text,
     )
     await state.set_state(CreateEvent.waiting_for_confirm)
 
     await message.answer(
-        format_confirmation(parsed.title, parsed.date, parsed.time),
+        format_confirmation(parsed.title, parsed.event_date, parsed.event_time),
         reply_markup=event_confirm_keyboard(),
     )
