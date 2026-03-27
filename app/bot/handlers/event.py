@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 
 from aiogram import Bot, Router
 from aiogram.filters import StateFilter
@@ -7,8 +8,8 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.filters.not_command import NotCommandFilter
-from app.bot.formatting import PARSE_ERROR_MESSAGES, format_confirmation
-from app.bot.keyboards.confirm import event_confirm_keyboard
+from app.bot.formatting import PARSE_ERROR_MESSAGES, format_confirmation, format_date_human
+from app.bot.keyboards.confirm import event_confirm_keyboard, event_past_date_keyboard
 from app.bot.keyboards.space_select import space_select_keyboard
 from app.bot.states.create_event import CreateEvent
 from app.services import space_service
@@ -16,6 +17,31 @@ from app.services.llm_parser import ParseError, ParsedEvent, parse_event
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+
+async def _show_confirmation_or_past_warning(
+    message: Message,
+    state: FSMContext,
+    parsed: ParsedEvent,
+    transcript: str | None = None,
+) -> None:
+    """Показать карточку подтверждения или предупреждение о прошедшей дате."""
+    if parsed.event_date < date.today():
+        await state.set_state(CreateEvent.waiting_for_past_confirm)
+        await message.answer(
+            f"⚠️ Дата уже прошла ({format_date_human(parsed.event_date)}).\n\n"
+            f"📝 {parsed.title}\n\n"
+            "Всё равно создать?",
+            reply_markup=event_past_date_keyboard(),
+        )
+    else:
+        await state.set_state(CreateEvent.waiting_for_confirm)
+        await message.answer(
+            format_confirmation(
+                parsed.title, parsed.event_date, parsed.event_time, transcript=transcript,
+            ),
+            reply_markup=event_confirm_keyboard(),
+        )
 
 
 async def process_parsed_event(
@@ -47,19 +73,16 @@ async def process_parsed_event(
 
     if len(spaces) == 1:
         await state.update_data(space_id=str(spaces[0]["id"]))
-        await state.set_state(CreateEvent.waiting_for_confirm)
-        await message.answer(
-            format_confirmation(
-                parsed.title, parsed.event_date, parsed.event_time, transcript=transcript,
-            ),
-            reply_markup=event_confirm_keyboard(),
-        )
+        await _show_confirmation_or_past_warning(message, state, parsed, transcript)
     else:
         await state.set_state(CreateEvent.waiting_for_space)
         await message.answer(
             "В какое пространство добавить событие?",
             reply_markup=space_select_keyboard(spaces, "event"),
         )
+
+
+MAX_EVENT_TEXT_LENGTH = 1000
 
 
 @router.message(StateFilter(None), NotCommandFilter())
@@ -70,12 +93,23 @@ async def handle_text_event(
     bot: Bot,
 ) -> None:
     """Перехват текстовых сообщений (не команд) для создания событий."""
+    text = (message.text or "").strip()
+    if not text:
+        return
+
+    if len(text) > MAX_EVENT_TEXT_LENGTH:
+        await message.answer(
+            f"❌ Слишком длинное сообщение. Опиши событие короче (до {MAX_EVENT_TEXT_LENGTH} символов)."
+        )
+        return
+
+    logger.info("event_create user_id=%d", message.from_user.id)
     await bot.send_chat_action(message.chat.id, "typing")
 
     try:
-        parsed = await parse_event(message.text)
+        parsed = await parse_event(text)
     except ParseError as e:
         await message.answer(f"❌ {PARSE_ERROR_MESSAGES.get(e.error_type, str(e))}")
         return
 
-    await process_parsed_event(message, state, session, bot, parsed, raw_input=message.text)
+    await process_parsed_event(message, state, session, bot, parsed, raw_input=text)

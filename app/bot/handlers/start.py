@@ -33,6 +33,7 @@ async def _upsert_user(session: AsyncSession, message: Message) -> None:
 async def cmd_start_join(
     message: Message, session: AsyncSession, command: CommandObject, bot: Bot
 ) -> None:
+    logger.info("/start user_id=%d deep_link=%s", message.from_user.id, command.args)
     await _upsert_user(session, message)
 
     payload = command.args or ""
@@ -65,16 +66,19 @@ async def cmd_start_join(
                 member["user_id"],
                 f"👋 {joiner_name} присоединился к «{space.name}»!",
             )
-        except Exception:
+        except Exception as e:
             logger.warning(
-                "Не удалось уведомить пользователя %s о join в space %s",
+                "Не удалось уведомить: user_id=%s space_id=%s error_type=%s error=%s",
                 member["user_id"],
                 space.id,
+                type(e).__name__,
+                e,
             )
 
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, session: AsyncSession) -> None:
+    logger.info("/start user_id=%d", message.from_user.id)
     await _upsert_user(session, message)
     await _send_welcome(message)
 

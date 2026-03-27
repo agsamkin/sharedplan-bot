@@ -53,6 +53,7 @@ async def _send_events_list(
 
 @router.message(Command("events"))
 async def cmd_events(message: Message, session: AsyncSession) -> None:
+    logger.info("/events user_id=%d", message.from_user.id)
     spaces = await space_service.get_user_spaces(session, message.from_user.id)
 
     if not spaces:

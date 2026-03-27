@@ -22,6 +22,7 @@ router = Router()
 
 @router.message(Command("newspace"))
 async def cmd_newspace(message: Message, state: FSMContext) -> None:
+    logger.info("/newspace user_id=%d", message.from_user.id)
     await state.set_state(CreateSpace.waiting_for_name)
     await message.answer("Введи название пространства:")
 
@@ -59,6 +60,7 @@ async def process_space_name(
 
 @router.message(Command("spaces"))
 async def cmd_spaces(message: Message, session: AsyncSession) -> None:
+    logger.info("/spaces user_id=%d", message.from_user.id)
     spaces = await space_service.get_user_spaces(session, message.from_user.id)
     if not spaces:
         await message.answer(
@@ -81,6 +83,7 @@ async def cmd_spaces(message: Message, session: AsyncSession) -> None:
 async def cmd_space_info(
     message: Message, session: AsyncSession, bot: Bot
 ) -> None:
+    logger.info("/space_info user_id=%d", message.from_user.id)
     spaces = await space_service.get_user_spaces(session, message.from_user.id)
     if not spaces:
         await message.answer("Ты пока не состоишь ни в одном пространстве.")
@@ -114,6 +117,7 @@ async def _send_space_info(
 
 @router.message(Command("kick"))
 async def cmd_kick(message: Message, session: AsyncSession) -> None:
+    logger.info("/kick user_id=%d", message.from_user.id)
     spaces = await space_service.get_user_spaces(session, message.from_user.id)
     admin_spaces = [s for s in spaces if s["role"] == "admin"]
 
@@ -173,6 +177,7 @@ async def _do_kick(
 
 @router.message(Command("delete_space"))
 async def cmd_delete_space(message: Message, session: AsyncSession) -> None:
+    logger.info("/delete_space user_id=%d", message.from_user.id)
     spaces = await space_service.get_user_spaces(session, message.from_user.id)
     admin_spaces = [s for s in spaces if s["role"] == "admin"]
 

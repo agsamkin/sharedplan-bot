@@ -8,7 +8,7 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.formatting import PARSE_ERROR_MESSAGES, STT_ERROR_MESSAGES
-from app.bot.handlers.event import process_parsed_event
+from app.bot.handlers.event import MAX_EVENT_TEXT_LENGTH, process_parsed_event
 from app.services.llm_parser import ParseError, parse_event
 from app.services.speech_to_text import TranscriptionError, transcribe
 
@@ -40,6 +40,15 @@ async def handle_voice_event(
         log("STT error: type=%s message=%s", e.error_type, e)
         await message.answer(f"❌ {STT_ERROR_MESSAGES.get(e.error_type, str(e))}")
         return
+
+    if len(transcript) > MAX_EVENT_TEXT_LENGTH:
+        await message.answer(
+            f"🎤 Распознано: «{transcript[:200]}...»\n\n"
+            f"❌ Слишком длинное сообщение. Опиши событие короче (до {MAX_EVENT_TEXT_LENGTH} символов)."
+        )
+        return
+
+    logger.info("event_create_voice user_id=%d", message.from_user.id)
 
     # LLM-парсинг транскрипции
     try:

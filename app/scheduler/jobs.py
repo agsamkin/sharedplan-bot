@@ -26,11 +26,13 @@ async def process_due_reminders(
                     event_title, event_date, event_time, space_name, reminder.reminder_type,
                 )
                 await bot.send_message(reminder.user_id, text)
-            except Exception:
+            except Exception as e:
                 logger.warning(
-                    "Не удалось отправить напоминание пользователю %s (reminder %s)",
+                    "Не удалось отправить напоминание: user_id=%s reminder_id=%s error_type=%s error=%s",
                     reminder.user_id,
                     reminder.id,
+                    type(e).__name__,
+                    e,
                 )
             finally:
                 await mark_sent(session, reminder.id)

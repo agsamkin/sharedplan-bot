@@ -7,8 +7,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.formatting import format_confirmation
-from app.bot.keyboards.confirm import delete_space_confirm_keyboard, event_confirm_keyboard
+from app.bot.formatting import format_confirmation, format_date_human
+from app.bot.keyboards.confirm import (
+    delete_space_confirm_keyboard,
+    event_confirm_keyboard,
+    event_past_date_keyboard,
+)
 from app.bot.states.create_event import CreateEvent
 from app.services import space_service
 
@@ -95,11 +99,21 @@ async def on_space_select(
         event_time = time.fromisoformat(data["parsed_time"]) if data.get("parsed_time") else None
         transcript = data.get("transcript")
         await state.update_data(space_id=str(space_id))
-        await state.set_state(CreateEvent.waiting_for_confirm)
-        await callback.message.edit_text(
-            format_confirmation(data["parsed_title"], event_date, event_time, transcript=transcript),
-            reply_markup=event_confirm_keyboard(),
-        )
+
+        if event_date < date.today():
+            await state.set_state(CreateEvent.waiting_for_past_confirm)
+            await callback.message.edit_text(
+                f"⚠️ Дата уже прошла ({format_date_human(event_date)}).\n\n"
+                f"📝 {data['parsed_title']}\n\n"
+                "Всё равно создать?",
+                reply_markup=event_past_date_keyboard(),
+            )
+        else:
+            await state.set_state(CreateEvent.waiting_for_confirm)
+            await callback.message.edit_text(
+                format_confirmation(data["parsed_title"], event_date, event_time, transcript=transcript),
+                reply_markup=event_confirm_keyboard(),
+            )
 
     elif action == "events":
         from app.bot.handlers.events_list import _send_events_list

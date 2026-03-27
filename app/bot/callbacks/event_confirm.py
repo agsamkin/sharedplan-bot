@@ -14,6 +14,9 @@ from app.bot.states.create_event import CreateEvent
 from app.services import event_service, reminder_service, space_service
 from app.services.llm_parser import ParseError, parse_event
 
+# Re-exports for registration
+__all__ = ["router"]
+
 logger = logging.getLogger(__name__)
 router = Router()
 
@@ -64,10 +67,12 @@ async def on_event_confirm(
             continue
         try:
             await bot.send_message(member["user_id"], notification)
-        except Exception:
+        except Exception as e:
             logger.warning(
-                "Не удалось отправить уведомление пользователю %s",
+                "Не удалось отправить уведомление: user_id=%s error_type=%s error=%s",
                 member["user_id"],
+                type(e).__name__,
+                e,
             )
 
     await callback.answer()
@@ -115,3 +120,31 @@ async def handle_event_edit(
         format_confirmation(parsed.title, parsed.event_date, parsed.event_time),
         reply_markup=event_confirm_keyboard(),
     )
+
+
+@router.callback_query(F.data == "event_past_confirm")
+async def on_event_past_confirm(callback: CallbackQuery, state: FSMContext) -> None:
+    """Пользователь подтвердил создание события с прошедшей датой."""
+    data = await state.get_data()
+    if not data.get("parsed_title"):
+        await callback.answer("Нет данных события")
+        return
+
+    event_date = date.fromisoformat(data["parsed_date"])
+    event_time = time.fromisoformat(data["parsed_time"]) if data.get("parsed_time") else None
+    transcript = data.get("transcript")
+
+    await state.set_state(CreateEvent.waiting_for_confirm)
+    await callback.message.edit_text(
+        format_confirmation(data["parsed_title"], event_date, event_time, transcript=transcript),
+        reply_markup=event_confirm_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "event_past_cancel")
+async def on_event_past_cancel(callback: CallbackQuery, state: FSMContext) -> None:
+    """Пользователь отменил создание события с прошедшей датой."""
+    await callback.message.edit_text("❌ Создание события отменено.")
+    await state.clear()
+    await callback.answer()

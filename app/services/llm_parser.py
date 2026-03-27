@@ -5,7 +5,7 @@ from datetime import date, datetime, time, timezone, timedelta
 from typing import Literal, Optional
 
 from openai import AsyncOpenAI, APIStatusError, APITimeoutError, APIConnectionError
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.config import settings
 from app.prompts.event_parser import build_messages, build_messages_reinforced
@@ -15,12 +15,21 @@ logger = logging.getLogger(__name__)
 _client: AsyncOpenAI | None = None
 _MAX_RETRIES = 3
 _BACKOFF_BASE = 1  # seconds
+_MAX_FUTURE_DAYS = 365 * 2  # 2 года
 
 
 class ParsedEvent(BaseModel):
     title: str
     event_date: date = Field(alias="date")
     event_time: Optional[time] = Field(default=None, alias="time")
+
+    @field_validator("event_date")
+    @classmethod
+    def date_not_too_far_in_future(cls, v: date) -> date:
+        max_date = date.today() + timedelta(days=_MAX_FUTURE_DAYS)
+        if v > max_date:
+            raise ValueError(f"Дата слишком далеко в будущем (максимум {max_date})")
+        return v
 
 
 class ParseError(Exception):
