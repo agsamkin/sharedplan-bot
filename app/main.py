@@ -8,6 +8,7 @@ from alembic.config import Config
 from app.bot.callbacks import event_confirm as event_confirm_cb
 from app.bot.callbacks import space_select as space_select_cb
 from app.bot.handlers import event, events_list, help, space, start, voice
+from app.bot.commands import BOT_COMMANDS
 from app.bot.middlewares.db_session import DbSessionMiddleware
 from app.config import settings
 
@@ -36,6 +37,7 @@ async def main() -> None:
     dp.include_router(event.router)
 
     bot_info = await bot.get_me()
+    await bot.set_my_commands(BOT_COMMANDS)
     logger.info("Бот @%s запускается...", bot_info.username)
     await dp.start_polling(bot, bot_username=bot_info.username)
 
