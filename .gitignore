@@ -42,5 +42,9 @@ htmlcov/
 # Logs
 *.log
 
+# Node.js
+node_modules/
+*.tsbuildinfo
+
 # Claude Code
 .claude/
