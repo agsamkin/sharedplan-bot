@@ -1,4 +1,4 @@
-import { get, put, del } from './client'
+import { get, post, put, del } from './client'
 
 export interface SpaceEvent {
   id: string
@@ -20,8 +20,18 @@ export interface EventUpdateData {
   event_time: string | null
 }
 
+export interface EventCreateData {
+  title: string
+  event_date: string
+  event_time: string | null
+}
+
 export function getSpaceEvents(spaceId: string): Promise<SpaceEvent[]> {
   return get<SpaceEvent[]>(`/api/spaces/${spaceId}/events`)
+}
+
+export function createSpaceEvent(spaceId: string, data: EventCreateData): Promise<SpaceEvent> {
+  return post<SpaceEvent>(`/api/spaces/${spaceId}/events`, data)
 }
 
 export function getEvent(id: string): Promise<EventDetailResponse> {

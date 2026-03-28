@@ -4,7 +4,7 @@ import { getSpaceEvents, type SpaceEvent } from '../api/events'
 import { getSpace, deleteSpace, type SpaceDetail } from '../api/spaces'
 import { formatRelativeDate, formatTime } from '../utils/dates'
 import { Header } from '../components/Header'
-import { Section, Divider } from '../components/Section'
+import { Divider } from '../components/Section'
 import { ListItem } from '../components/ListItem'
 import { ActionButton } from '../components/ActionButton'
 import { DateBadge } from '../components/DateBadge'
@@ -152,24 +152,49 @@ export function SpaceDetailPage() {
         />
       )}
 
-      <Section title={`События · ${events.length}`}>
-        {events.length === 0 ? (
-          <EmptyView message="Нет предстоящих событий. Создайте событие через бота." />
-        ) : (
-          events.map((ev, i) => (
-            <div key={ev.id}>
-              {i > 0 && <Divider />}
-              <ListItem
-                left={<DateBadge date={ev.event_date} />}
-                title={ev.title}
-                subtitle={`${formatRelativeDate(ev.event_date)}${ev.event_time ? ` · ${formatTime(ev.event_time)}` : ''} · ${ev.creator_name}`}
-                right={<ChevronRight />}
-                onClick={() => navigate(`/events/${ev.id}`)}
-              />
-            </div>
-          ))
-        )}
-      </Section>
+      <div style={{ marginBottom: 8 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', padding: '20px 16px 8px',
+        }}>
+          <span style={{
+            fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)',
+            textTransform: 'uppercase', letterSpacing: 0.8, flex: 1,
+          }}>
+            События · {events.length}
+          </span>
+          <button onClick={() => navigate(`/spaces/${spaceId}/events/new`, { state: { events, spaceName: space.name } })} style={{
+            display: 'flex', alignItems: 'center', gap: 4, padding: '5px 12px',
+            borderRadius: 8, border: 'none', background: 'var(--accent-blue-light, #378ADD14)',
+            color: 'var(--accent-blue)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.5V11.5M2.5 7H11.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+            Добавить
+          </button>
+        </div>
+        <div style={{
+          background: 'var(--bg-card)',
+          borderTop: '0.5px solid var(--border)',
+          borderBottom: '0.5px solid var(--border)',
+        }}>
+          {events.length === 0 ? (
+            <EmptyView message="Нет предстоящих событий" />
+          ) : (
+            events.map((ev, i) => (
+              <div key={ev.id}>
+                {i > 0 && <Divider />}
+                <ListItem
+                  left={<DateBadge date={ev.event_date} />}
+                  title={ev.title}
+                  subtitle={`${formatRelativeDate(ev.event_date)}${ev.event_time ? ` · ${formatTime(ev.event_time)}` : ''} · ${ev.creator_name}`}
+                  right={<ChevronRight />}
+                  onClick={() => navigate(`/events/${ev.id}`)}
+                />
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   )
 }

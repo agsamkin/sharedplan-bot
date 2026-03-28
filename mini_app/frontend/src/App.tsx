@@ -10,6 +10,7 @@ import { MembersPage } from './pages/MembersPage'
 import { EventDetailPage } from './pages/EventDetailPage'
 import { ReminderSettingsPage } from './pages/ReminderSettingsPage'
 import { SpaceCreatePage } from './pages/SpaceCreatePage'
+import { EventCreatePage } from './pages/EventCreatePage'
 
 function BackButtonHandler() {
   const navigate = useNavigate()
@@ -48,6 +49,7 @@ function AppInner() {
         <Route path="/" element={<SpacesPage />} />
         <Route path="/spaces/new" element={<SpaceCreatePage />} />
         <Route path="/spaces/:id" element={<SpaceDetailPage />} />
+        <Route path="/spaces/:id/events/new" element={<EventCreatePage />} />
         <Route path="/spaces/:id/edit" element={<SpaceEditPage />} />
         <Route path="/spaces/:id/members" element={<MembersPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />

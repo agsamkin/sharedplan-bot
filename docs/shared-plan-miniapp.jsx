@@ -161,6 +161,7 @@ export default function SharedPlanMiniApp() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [toast, setToast] = useState(null);
   const [newSpaceName, setNewSpaceName] = useState("");
+  const [newEvent, setNewEvent] = useState({ title: "", date: "", time: "" });
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
 
@@ -188,6 +189,7 @@ export default function SharedPlanMiniApp() {
     spaceDetail: selectedSpace?.name || "",
     spaceEdit: "Редактировать",
     members: "Участники",
+    eventCreate: "Новое событие",
     eventDetail: "Событие",
     reminders: "Напоминания",
   };
@@ -353,10 +355,26 @@ export default function SharedPlanMiniApp() {
           </div>
         )}
 
-        <Section title={`События · ${spaceEvents.length}`}>
+        <div style={{ display: "flex", alignItems: "center", padding: "20px 16px 8px" }}>
+          <span style={{
+            fontSize: 12, fontWeight: 600, color: "#8e8e93", textTransform: "uppercase",
+            letterSpacing: 0.8, flex: 1,
+          }}>События · {spaceEvents.length}</span>
+          <button onClick={() => {
+            setNewEvent({ title: "", date: "", time: "" });
+            navigate("eventCreate");
+          }} style={{
+            display: "flex", alignItems: "center", gap: 4, padding: "5px 12px",
+            borderRadius: 8, border: "none", background: "#378ADD14",
+            color: "#378ADD", fontSize: 13, fontWeight: 600, cursor: "pointer",
+          }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.5V11.5M2.5 7H11.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> Добавить
+          </button>
+        </div>
+        <div style={{ background: "#fff", borderTop: "0.5px solid #e5e5e5", borderBottom: "0.5px solid #e5e5e5" }}>
           {spaceEvents.length === 0 ? (
             <div style={{ padding: "32px 16px", textAlign: "center", color: "#8e8e93", fontSize: 14 }}>
-              Нет предстоящих событий. Создайте событие через бота.
+              Нет предстоящих событий
             </div>
           ) : spaceEvents.map((ev, i) => (
             <div key={ev.id}>
@@ -386,7 +404,7 @@ export default function SharedPlanMiniApp() {
               />
             </div>
           ))}
-        </Section>
+        </div>
       </div>
     );
   };
@@ -652,12 +670,90 @@ export default function SharedPlanMiniApp() {
     </div>
   );
 
+  const renderEventCreate = () => {
+    const canSave = newEvent.title.trim() && newEvent.date;
+    return (
+      <div style={{ background: "#f2f2f7", minHeight: "100%" }}>
+        <Section title="Детали события">
+          <div style={{ padding: "12px 16px" }}>
+            <label style={{ fontSize: 12, color: "#8e8e93", fontWeight: 500, display: "block", marginBottom: 6 }}>Название</label>
+            <input
+              value={newEvent.title}
+              onChange={e => setNewEvent(ev => ({ ...ev, title: e.target.value }))}
+              style={{
+                width: "100%", padding: "11px 14px", fontSize: 16, borderRadius: 10,
+                border: "0.5px solid #d1d1d6", outline: "none", background: "#fff",
+                boxSizing: "border-box",
+              }}
+              placeholder="Ужин с друзьями"
+              autoFocus
+            />
+          </div>
+          <div style={{ height: 0.5, background: "#e5e5e5", marginLeft: 16 }} />
+          <div style={{ padding: "12px 16px", display: "flex", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 12, color: "#8e8e93", fontWeight: 500, display: "block", marginBottom: 6 }}>Дата</label>
+              <input
+                type="date"
+                value={newEvent.date}
+                onChange={e => setNewEvent(ev => ({ ...ev, date: e.target.value }))}
+                style={{
+                  width: "100%", padding: "11px 14px", fontSize: 15, borderRadius: 10,
+                  border: "0.5px solid #d1d1d6", outline: "none", background: "#fff",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 12, color: "#8e8e93", fontWeight: 500, display: "block", marginBottom: 6 }}>Время <span style={{ color: "#b0b0b0" }}>(необязательно)</span></label>
+              <input
+                type="time"
+                value={newEvent.time}
+                onChange={e => setNewEvent(ev => ({ ...ev, time: e.target.value }))}
+                style={{
+                  width: "100%", padding: "11px 14px", fontSize: 15, borderRadius: 10,
+                  border: "0.5px solid #d1d1d6", outline: "none", background: "#fff",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+          </div>
+        </Section>
+        <div style={{ padding: "12px 16px" }}>
+          <button onClick={() => {
+            const id = Date.now();
+            const ev = {
+              id, title: newEvent.title.trim(), date: newEvent.date,
+              time: newEvent.time || null, author: "Иван", spaceId: space.id,
+            };
+            setEvents(evs => ({
+              ...evs,
+              [space.id]: [...(evs[space.id] || []), ev].sort((a, b) => a.date.localeCompare(b.date)),
+            }));
+            goBack();
+            showToast("Событие создано");
+          }} style={{
+            width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
+            background: "#378ADD", color: "#fff", fontSize: 16, fontWeight: 600,
+            cursor: "pointer", opacity: canSave ? 1 : 0.4,
+          }} disabled={!canSave}>
+            Создать событие
+          </button>
+        </div>
+        <div style={{ padding: "8px 16px", fontSize: 13, color: "#8e8e93", lineHeight: 1.5 }}>
+          Все участники пространства «{space?.name}» получат уведомление о новом событии.
+        </div>
+      </div>
+    );
+  };
+
   const screens = {
     spaces: renderSpaces,
     spaceCreate: renderSpaceCreate,
     spaceDetail: renderSpaceDetail,
     spaceEdit: renderSpaceEdit,
     members: renderMembers,
+    eventCreate: renderEventCreate,
     eventDetail: renderEventDetail,
     reminders: renderReminders,
   };

@@ -2,6 +2,7 @@
 
 Эндпоинты:
 - GET /api/spaces/{space_id}/events — список ближайших событий пространства
+- POST /api/spaces/{space_id}/events — создание события в пространстве
 - GET /api/events/{event_id} — информация о событии
 - PUT /api/events/{event_id} — редактирование события (только владелец)
 - DELETE /api/events/{event_id} — удаление события (только владелец)
@@ -72,6 +73,98 @@ async def list_events(request: web.Request) -> web.Response:
     ]
 
     return web.json_response(result)
+
+
+@routes.post("/api/spaces/{space_id}/events")
+async def create_event(request: web.Request) -> web.Response:
+    """Создание события в пространстве.
+
+    Принимает JSON body: title (обязательно), event_date (обязательно), event_time (опционально).
+    Создаёт напоминания для участников и отправляет уведомления.
+    """
+    user_id: int = request["user_id"]
+    session = request["session"]
+
+    try:
+        space_id = UUID(request.match_info["space_id"])
+    except ValueError:
+        return web.json_response({"error": "Невалидный space_id"}, status=400)
+
+    # Проверяем членство
+    membership = await session.get(UserSpace, (user_id, space_id))
+    if membership is None:
+        return web.json_response({"error": "Нет доступа к пространству"}, status=403)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Невалидный JSON"}, status=400)
+
+    # Валидация title
+    title = body.get("title")
+    if title is None:
+        return web.json_response({"error": "Поле title обязательно"}, status=400)
+    if not isinstance(title, str) or not title.strip():
+        return web.json_response({"error": "Название не может быть пустым"}, status=400)
+    if len(title.strip()) > 500:
+        return web.json_response({"error": "Название слишком длинное (макс. 500 символов)"}, status=400)
+
+    # Валидация event_date
+    raw_date = body.get("event_date")
+    if raw_date is None:
+        return web.json_response({"error": "Поле event_date обязательно"}, status=400)
+    try:
+        event_date = date.fromisoformat(raw_date)
+    except (ValueError, TypeError):
+        return web.json_response({"error": "Невалидный формат даты"}, status=400)
+
+    # Валидация event_time (опционально)
+    event_time = None
+    raw_time = body.get("event_time")
+    if raw_time is not None:
+        try:
+            parts = raw_time.split(":")
+            event_time = time(int(parts[0]), int(parts[1]))
+        except (ValueError, TypeError, IndexError, AttributeError):
+            return web.json_response({"error": "Невалидный формат времени (ожидается HH:MM)"}, status=400)
+
+    # Создаём событие
+    event = await event_service.create_event(
+        session,
+        space_id=space_id,
+        title=title.strip(),
+        event_date=event_date,
+        event_time=event_time,
+        created_by=user_id,
+        raw_input=None,
+    )
+
+    # Создаём напоминания для участников
+    await reminder_service.create_reminders_for_event(session, event, space_id)
+
+    # Уведомляем участников
+    creator = await session.get(User, user_id)
+    creator_name = creator.first_name if creator else None
+
+    space = await session.get(Space, space_id)
+    space_name = space.name if space else ""
+
+    notification_lines = [
+        f"📅 Новое событие в «{space_name}»!\n",
+        f"📝 {event.title}",
+        f"📅 {event.event_date}",
+    ]
+    if event.event_time:
+        notification_lines.append(f"⏰ {event.event_time.strftime('%H:%M')}")
+    notification_lines.append(f"👤 Добавил: {creator_name or 'Неизвестный'}")
+
+    await _notify_space_members(
+        request, session, space_id, user_id,
+        "\n".join(notification_lines),
+    )
+
+    result = _serialize_event(event, creator_name=creator_name, is_owner=True)
+    return web.json_response(result, status=201)
 
 
 @routes.get("/api/events/{event_id}")

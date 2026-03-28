@@ -66,7 +66,9 @@ async function request<T>(
     let errorMessage = `HTTP ${response.status}`
     try {
       const errorBody = await response.json()
-      if (errorBody.detail) {
+      if (errorBody.error) {
+        errorMessage = errorBody.error
+      } else if (errorBody.detail) {
         errorMessage = errorBody.detail
       } else if (errorBody.message) {
         errorMessage = errorBody.message
