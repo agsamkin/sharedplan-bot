@@ -95,3 +95,43 @@ def format_notification(
         lines.append(f"⏰ {event_time.strftime('%H:%M')}")
     lines.append(f"👤 Добавил: {creator_name}")
     return "\n".join(lines)
+
+
+def format_event_manage_card(
+    title: str, event_date: date, event_time: time | None,
+) -> str:
+    """Карточка управления событием."""
+    lines = [
+        "⚙️ Управление событием:\n",
+        f"📝 {title}",
+        f"📅 {format_date_with_weekday(event_date)}",
+    ]
+    if event_time is not None:
+        lines.append(f"⏰ {event_time.strftime('%H:%M')}")
+    return "\n".join(lines)
+
+
+def format_event_edited_notification(
+    space_name: str, title: str, field_label: str,
+    old_value: str, new_value: str, editor_name: str,
+) -> str:
+    """Уведомление участников об изменении события."""
+    lines = [
+        f"✏️ Событие изменено в «{space_name}»!\n",
+        f"📝 {title}",
+        f"🔄 {field_label}: {old_value} → {new_value}",
+        f"👤 Изменил: {editor_name}",
+    ]
+    return "\n".join(lines)
+
+
+def format_event_deleted_notification(
+    space_name: str, title: str, editor_name: str,
+) -> str:
+    """Уведомление участников об удалении события."""
+    lines = [
+        f"🗑 Событие удалено в «{space_name}»!\n",
+        f"📝 {title}",
+        f"👤 Удалил: {editor_name}",
+    ]
+    return "\n".join(lines)

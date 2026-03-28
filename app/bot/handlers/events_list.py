@@ -3,7 +3,7 @@ from uuid import UUID
 
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.formatting import format_date_relative
@@ -15,7 +15,8 @@ router = Router()
 
 
 async def _send_events_list(
-    message: Message, session: AsyncSession, space_id: UUID, edit: bool = False,
+    message: Message, session: AsyncSession, space_id: UUID,
+    edit: bool = False, user_id: int | None = None,
 ) -> None:
     """Отправить список событий пространства."""
     space = await space_service.get_space_by_id(session, space_id)
@@ -45,10 +46,25 @@ async def _send_events_list(
             lines.append(f"{i}. {ev.title} — {date_str}")
 
     text = "\n".join(lines)
+
+    # Inline-кнопки управления для событий текущего пользователя
+    buttons = []
+    if user_id is not None:
+        for ev in events:
+            if ev.created_by == user_id:
+                buttons.append([
+                    InlineKeyboardButton(
+                        text=f"⚙️ {ev.title}",
+                        callback_data=f"event_manage:{ev.id}",
+                    )
+                ])
+
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=buttons) if buttons else None
+
     if edit:
-        await message.edit_text(text)
+        await message.edit_text(text, reply_markup=reply_markup)
     else:
-        await message.answer(text)
+        await message.answer(text, reply_markup=reply_markup)
 
 
 @router.message(Command("events"))
@@ -63,7 +79,7 @@ async def cmd_events(message: Message, session: AsyncSession) -> None:
         return
 
     if len(spaces) == 1:
-        await _send_events_list(message, session, spaces[0]["id"])
+        await _send_events_list(message, session, spaces[0]["id"], user_id=message.from_user.id)
     else:
         await message.answer(
             "Выбери пространство:",

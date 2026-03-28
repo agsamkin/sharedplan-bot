@@ -2,7 +2,7 @@ import logging
 from datetime import date, datetime, time
 from uuid import UUID
 
-from sqlalchemy import and_, case, or_, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from zoneinfo import ZoneInfo
 
@@ -68,3 +68,32 @@ async def get_upcoming_events(
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def get_event_for_owner(
+    session: AsyncSession, event_id: UUID, user_id: int
+) -> Event | None:
+    """Получить событие, только если пользователь — его владелец."""
+    stmt = select(Event).where(Event.id == event_id, Event.created_by == user_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def delete_event(session: AsyncSession, event_id: UUID) -> None:
+    """Удалить событие (каскадно удаляет напоминания)."""
+    stmt = delete(Event).where(Event.id == event_id)
+    await session.execute(stmt)
+    await session.flush()
+
+
+async def update_event(
+    session: AsyncSession, event_id: UUID, **fields
+) -> Event | None:
+    """Обновить поля события (title, event_date, event_time)."""
+    event = await session.get(Event, event_id)
+    if not event:
+        return None
+    for key, value in fields.items():
+        setattr(event, key, value)
+    await session.flush()
+    return event

@@ -2,7 +2,7 @@ import logging
 from datetime import date, datetime, time, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from zoneinfo import ZoneInfo
 
@@ -103,6 +103,21 @@ async def create_reminders_for_event(
     await session.flush()
     logger.info("Создано %d напоминаний для события %s", count, event.id)
     return count
+
+
+async def recreate_reminders_for_event(
+    session: AsyncSession,
+    event: Event,
+    space_id: UUID,
+) -> int:
+    """Удалить неотправленные напоминания и создать новые."""
+    stmt = delete(ScheduledReminder).where(
+        ScheduledReminder.event_id == event.id,
+        ScheduledReminder.sent.is_(False),
+    )
+    await session.execute(stmt)
+    await session.flush()
+    return await create_reminders_for_event(session, event, space_id)
 
 
 async def get_due_reminders(session: AsyncSession, limit: int = 50) -> list:

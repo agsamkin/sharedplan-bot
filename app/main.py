@@ -9,6 +9,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import text
 
 from app.bot.callbacks import event_confirm as event_confirm_cb
+from app.bot.callbacks import event_manage as event_manage_cb
 from app.bot.callbacks import reminder_toggle as reminder_toggle_cb
 from app.bot.callbacks import space_select as space_select_cb
 from app.bot.handlers import event, events_list, help, reminders, space, start, voice
@@ -69,6 +70,7 @@ async def main() -> None:
     dp.include_router(events_list.router)
     dp.include_router(reminders.router)
     dp.include_router(event_confirm_cb.router)
+    dp.include_router(event_manage_cb.router)
     dp.include_router(reminder_toggle_cb.router)
     dp.include_router(space_select_cb.router)
     dp.include_router(voice.router)

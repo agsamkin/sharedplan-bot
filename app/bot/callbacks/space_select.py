@@ -118,6 +118,9 @@ async def on_space_select(
 
     elif action == "events":
         from app.bot.handlers.events_list import _send_events_list
-        await _send_events_list(callback.message, session, space_id, edit=True)
+        await _send_events_list(
+            callback.message, session, space_id,
+            edit=True, user_id=callback.from_user.id,
+        )
 
     await callback.answer()
