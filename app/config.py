@@ -14,5 +14,8 @@ class Settings(BaseSettings):
     TIMEZONE: str = "Europe/Moscow"
     REMINDER_CHECK_INTERVAL_SECONDS: int = 30
 
+    MINI_APP_URL: str = ""
+    MINI_APP_PORT: int = 8080
+
 
 settings = Settings()

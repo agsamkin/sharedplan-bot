@@ -2,6 +2,7 @@ import asyncio
 import logging
 import sys
 
+from aiohttp import web
 from aiogram import Bot, Dispatcher
 from alembic import command
 from alembic.config import Config
@@ -9,10 +10,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import text
 
 from app.bot.callbacks import event_confirm as event_confirm_cb
-from app.bot.callbacks import event_manage as event_manage_cb
-from app.bot.callbacks import reminder_toggle as reminder_toggle_cb
 from app.bot.callbacks import space_select as space_select_cb
-from app.bot.handlers import event, events_list, help, reminders, space, start, voice
+from app.bot.handlers import event, events_list, help, mini_app, reminders, space, start, voice
 from app.bot.commands import BOT_COMMANDS
 from app.bot.middlewares.access_control import AccessControlMiddleware
 from app.bot.middlewares.db_session import DbSessionMiddleware
@@ -22,6 +21,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.db.engine import async_session
 from app.scheduler.jobs import process_due_reminders
+from mini_app.backend.app import create_web_app
 
 logging.basicConfig(
     level=logging.INFO,
@@ -69,9 +69,8 @@ async def main() -> None:
     dp.include_router(space.router)
     dp.include_router(events_list.router)
     dp.include_router(reminders.router)
+    dp.include_router(mini_app.router)
     dp.include_router(event_confirm_cb.router)
-    dp.include_router(event_manage_cb.router)
-    dp.include_router(reminder_toggle_cb.router)
     dp.include_router(space_select_cb.router)
     dp.include_router(voice.router)
     dp.include_router(event.router)
@@ -86,9 +85,21 @@ async def main() -> None:
     scheduler.start()
     logger.info("APScheduler запущен (интервал %ds)", settings.REMINDER_CHECK_INTERVAL_SECONDS)
 
+    # Запускаем aiohttp веб-сервер для Mini App
+    web_app = create_web_app(bot)
+    runner = web.AppRunner(web_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", settings.MINI_APP_PORT)
+    await site.start()
+    logger.info("Mini App веб-сервер запущен на порту %d", settings.MINI_APP_PORT)
+
     await bot.set_my_commands(BOT_COMMANDS)
     logger.info("Бот @%s запускается...", bot_info.username)
-    await dp.start_polling(bot, bot_username=bot_info.username)
+    try:
+        await dp.start_polling(bot, bot_username=bot_info.username)
+    finally:
+        logger.info("Останавливаем Mini App веб-сервер...")
+        await runner.cleanup()
 
 
 if __name__ == "__main__":
