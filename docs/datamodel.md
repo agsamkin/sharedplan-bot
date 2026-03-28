@@ -50,7 +50,7 @@ erDiagram
   "1h": false,
   "30m": false,
   "15m": true,
-  "0m": false
+  "0m": true
 }
 ```
 

@@ -17,7 +17,7 @@
 
 ### Requirement: ORM-модель User
 
-Таблица `users` ДОЛЖНА содержать: `id` (BIGINT, PK — Telegram user ID), `username` (VARCHAR(255), NULLABLE), `first_name` (VARCHAR(255), NOT NULL), `reminder_settings` (JSONB, NOT NULL, DEFAULT `{"1d": true, "2h": true, "1h": false, "30m": false, "15m": true, "0m": false}`), `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW).
+Таблица `users` ДОЛЖНА содержать: `id` (BIGINT, PK — Telegram user ID), `username` (VARCHAR(255), NULLABLE), `first_name` (VARCHAR(255), NOT NULL), `reminder_settings` (JSONB, NOT NULL, DEFAULT `{"1d": true, "2h": true, "1h": false, "30m": false, "15m": true, "0m": true}`), `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW).
 
 #### Scenario: Таблица users создаётся с правильной схемой
 
