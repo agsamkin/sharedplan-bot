@@ -140,6 +140,12 @@ const IconCheck = () => (
   </svg>
 );
 
+const IconPlus = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <path d="M10 4V16M4 10H16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+  </svg>
+);
+
 
 export default function SharedPlanMiniApp() {
   const [screen, setScreen] = useState("spaces");
@@ -154,6 +160,7 @@ export default function SharedPlanMiniApp() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [toast, setToast] = useState(null);
+  const [newSpaceName, setNewSpaceName] = useState("");
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
 
@@ -177,6 +184,7 @@ export default function SharedPlanMiniApp() {
 
   const headerTitle = {
     spaces: "Пространства",
+    spaceCreate: "Новое пространство",
     spaceDetail: selectedSpace?.name || "",
     spaceEdit: "Редактировать",
     members: "Участники",
@@ -600,8 +608,53 @@ export default function SharedPlanMiniApp() {
     </div>
   );
 
+  const renderSpaceCreate = () => (
+    <div style={{ background: "#f2f2f7", minHeight: "100%" }}>
+      <Section title="Название пространства">
+        <div style={{ padding: "8px 16px 12px" }}>
+          <input
+            value={newSpaceName}
+            onChange={e => setNewSpaceName(e.target.value)}
+            style={{
+              width: "100%", padding: "12px 14px", fontSize: 16, borderRadius: 10,
+              border: "0.5px solid #d1d1d6", outline: "none", background: "#fff",
+              boxSizing: "border-box",
+            }}
+            placeholder="Например, «Семья» или «Работа»"
+            autoFocus
+          />
+        </div>
+      </Section>
+      <div style={{ padding: "12px 16px" }}>
+        <button onClick={() => {
+          const id = Date.now();
+          const code = Math.random().toString(36).slice(2, 10);
+          const newSpace = {
+            id, name: newSpaceName.trim(), membersCount: 1, eventsCount: 0,
+            inviteCode: code, role: "admin",
+          };
+          setSpaces(s => [...s, newSpace]);
+          setEvents(evs => ({ ...evs, [id]: [] }));
+          setHistory([]);
+          setScreen("spaces");
+          showToast("Пространство создано");
+        }} style={{
+          width: "100%", padding: "14px 0", borderRadius: 12, border: "none",
+          background: "#378ADD", color: "#fff", fontSize: 16, fontWeight: 600,
+          cursor: "pointer", opacity: newSpaceName.trim() ? 1 : 0.4,
+        }} disabled={!newSpaceName.trim()}>
+          Создать
+        </button>
+      </div>
+      <div style={{ padding: "8px 16px", fontSize: 13, color: "#8e8e93", lineHeight: 1.5 }}>
+        Вы станете администратором. Пригласите участников по ссылке после создания.
+      </div>
+    </div>
+  );
+
   const screens = {
     spaces: renderSpaces,
+    spaceCreate: renderSpaceCreate,
     spaceDetail: renderSpaceDetail,
     spaceEdit: renderSpaceEdit,
     members: renderMembers,
@@ -621,7 +674,12 @@ export default function SharedPlanMiniApp() {
       }}>
         <Header
           title={headerTitle[screen]}
-          right={screen === "spaces" ? null : null}
+          right={screen === "spaces" ? (
+            <button onClick={() => { setNewSpaceName(""); navigate("spaceCreate"); }} style={{
+              width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "none", border: "none", cursor: "pointer", color: "#378ADD", marginRight: 4,
+            }}><IconPlus /></button>
+          ) : null}
         />
 
         <div style={{ flex: 1, overflowY: "auto" }}>
