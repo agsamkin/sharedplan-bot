@@ -1,10 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Section, Cell, Switch, List } from '@telegram-apps/telegram-ui'
-import {
-  getReminderSettings,
-  updateReminderSettings,
-  type ReminderSettings,
-} from '../api/user'
+import { useNavigate } from 'react-router-dom'
+import { getReminderSettings, updateReminderSettings, type ReminderSettings } from '../api/user'
+import { Header } from '../components/Header'
+import { Section } from '../components/Section'
+import { Toggle } from '../components/Toggle'
 import { LoadingView, ErrorView } from '../components/StateViews'
 
 const REMINDER_OPTIONS = [
@@ -17,6 +16,7 @@ const REMINDER_OPTIONS = [
 ] as const
 
 export function ReminderSettingsPage() {
+  const navigate = useNavigate()
   const [settings, setSettings] = useState<ReminderSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -28,9 +28,7 @@ export function ReminderSettingsPage() {
       const data = await getReminderSettings()
       setSettings(data)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Не удалось загрузить настройки'
-      )
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить настройки')
     } finally {
       setLoading(false)
     }
@@ -40,60 +38,59 @@ export function ReminderSettingsPage() {
     fetchSettings()
   }, [fetchSettings])
 
-  const handleToggle = useCallback(
-    async (key: string) => {
-      if (!settings) return
+  const handleToggle = useCallback(async (key: string) => {
+    if (!settings) return
+    const prev = settings
+    const newSettings = { ...settings, [key]: !settings[key] }
+    setSettings(newSettings)
+    try {
+      await updateReminderSettings({ [key]: newSettings[key] })
+    } catch {
+      setSettings(prev)
+    }
+  }, [settings])
 
-      const newValue = !settings[key]
-      const newSettings = { ...settings, [key]: newValue }
-      setSettings(newSettings)
-
-      try {
-        await updateReminderSettings({ [key]: newValue })
-      } catch (err) {
-        setSettings(settings)
-        setError(
-          err instanceof Error ? err.message : 'Не удалось сохранить настройки'
-        )
-      }
-    },
-    [settings]
+  if (loading) return (
+    <>
+      <Header title="Напоминания" showBack onBack={() => navigate(-1)} />
+      <LoadingView />
+    </>
   )
 
-  if (loading) return <LoadingView />
-  if (error && !settings) return <ErrorView message={error} onRetry={fetchSettings} />
-  if (!settings) return <ErrorView message="Не удалось загрузить настройки" />
+  if (error && !settings) return (
+    <>
+      <Header title="Напоминания" showBack onBack={() => navigate(-1)} />
+      <ErrorView message={error} onRetry={fetchSettings} />
+    </>
+  )
+
+  if (!settings) return null
 
   return (
-    <List>
-      <Section header="Напоминания" footer="Выберите, когда вы хотите получать напоминания о предстоящих событиях.">
-        {REMINDER_OPTIONS.map(({ key, label }) => (
-          <Cell
-            key={key}
-            Component="label"
-            after={
-              <Switch
-                checked={!!settings[key]}
-                onChange={() => handleToggle(key)}
-              />
-            }
-          >
-            {label}
-          </Cell>
+    <div style={{ background: 'var(--bg-primary)', minHeight: '100%' }}>
+      <Header title="Напоминания" showBack onBack={() => navigate(-1)} />
+
+      <Section title="Интервалы напоминаний">
+        {REMINDER_OPTIONS.map(({ key, label }, i) => (
+          <div key={key}>
+            {i > 0 && <div style={{ height: 0.5, background: 'var(--border)', marginLeft: 16 }} />}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '12px 16px',
+            }}>
+              <span style={{ fontSize: 15, color: 'var(--text-primary)' }}>{label}</span>
+              <Toggle on={!!settings[key]} onToggle={() => handleToggle(key)} />
+            </div>
+          </div>
         ))}
       </Section>
 
-      {error && (
-        <div
-          style={{
-            padding: '8px 16px',
-            color: 'var(--tgui--destructive_text_color, #ff3b30)',
-            fontSize: '14px',
-          }}
-        >
-          {error}
-        </div>
-      )}
-    </List>
+      <div style={{
+        padding: '8px 16px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5,
+      }}>
+        Настройки применяются ко всем новым событиям во всех пространствах.
+        Уже созданные напоминания не изменятся.
+      </div>
+    </div>
   )
 }

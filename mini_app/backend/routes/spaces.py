@@ -85,6 +85,54 @@ async def get_space(request: web.Request) -> web.Response:
     })
 
 
+@routes.put("/api/spaces/{space_id}")
+async def update_space(request: web.Request) -> web.Response:
+    """Обновление названия пространства. Только для администратора."""
+    user_id: int = request["user_id"]
+    session = request["session"]
+
+    try:
+        space_id = UUID(request.match_info["space_id"])
+    except ValueError:
+        return web.json_response({"error": "Невалидный space_id"}, status=400)
+
+    is_admin = await space_service.check_admin(session, space_id, user_id)
+    if not is_admin:
+        return web.json_response({"error": "Только администратор может редактировать пространство"}, status=403)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Невалидное тело запроса"}, status=400)
+
+    name = body.get("name", "").strip()
+    if not name or len(name) > 255:
+        return web.json_response({"error": "Название должно быть от 1 до 255 символов"}, status=400)
+
+    space = await space_service.update_space_name(session, space_id, name)
+    if space is None:
+        return web.json_response({"error": "Пространство не найдено"}, status=404)
+
+    members = await space_service.get_space_members(session, space_id)
+
+    return web.json_response({
+        "id": str(space.id),
+        "name": space.name,
+        "invite_code": space.invite_code,
+        "created_by": space.created_by,
+        "members": [
+            {
+                "user_id": m["user_id"],
+                "first_name": m["first_name"],
+                "username": m["username"],
+                "role": m["role"],
+                "joined_at": m.get("joined_at"),
+            }
+            for m in members
+        ],
+    })
+
+
 @routes.delete("/api/spaces/{space_id}")
 async def delete_space(request: web.Request) -> web.Response:
     """Удаление пространства. Только для администратора."""

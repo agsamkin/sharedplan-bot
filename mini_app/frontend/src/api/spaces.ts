@@ -1,4 +1,4 @@
-import { get, del } from './client'
+import { get, del, put } from './client'
 
 export interface SpaceMember {
   user_id: number
@@ -37,4 +37,8 @@ export function deleteSpace(id: string): Promise<void> {
 
 export function removeMember(spaceId: string, userId: number): Promise<void> {
   return del<void>(`/api/spaces/${spaceId}/members/${userId}`)
+}
+
+export function updateSpaceName(id: string, name: string): Promise<SpaceDetail> {
+  return put<SpaceDetail>(`/api/spaces/${id}`, { name })
 }

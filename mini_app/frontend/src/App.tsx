@@ -1,12 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
-import { AppRoot } from '@telegram-apps/telegram-ui'
-import '@telegram-apps/telegram-ui/dist/styles.css'
+import { ToastProvider } from './components/Toast'
+import './styles/theme.css'
 
 import { SpacesPage } from './pages/SpacesPage'
-import { SpaceEventsPage } from './pages/SpaceEventsPage'
-import { SpaceSettingsPage } from './pages/SpaceSettingsPage'
-import { EventEditPage } from './pages/EventEditPage'
+import { SpaceDetailPage } from './pages/SpaceDetailPage'
+import { SpaceEditPage } from './pages/SpaceEditPage'
+import { MembersPage } from './pages/MembersPage'
+import { EventDetailPage } from './pages/EventDetailPage'
 import { ReminderSettingsPage } from './pages/ReminderSettingsPage'
 
 function BackButtonHandler() {
@@ -44,9 +45,10 @@ function AppInner() {
       <BackButtonHandler />
       <Routes>
         <Route path="/" element={<SpacesPage />} />
-        <Route path="/spaces/:id" element={<SpaceEventsPage />} />
-        <Route path="/spaces/:id/settings" element={<SpaceSettingsPage />} />
-        <Route path="/events/:id/edit" element={<EventEditPage />} />
+        <Route path="/spaces/:id" element={<SpaceDetailPage />} />
+        <Route path="/spaces/:id/edit" element={<SpaceEditPage />} />
+        <Route path="/spaces/:id/members" element={<MembersPage />} />
+        <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/settings/reminders" element={<ReminderSettingsPage />} />
       </Routes>
     </>
@@ -54,22 +56,42 @@ function AppInner() {
 }
 
 export function App() {
+  const [isDark, setIsDark] = useState(
+    () => window.Telegram?.WebApp?.colorScheme === 'dark'
+  )
+
   useEffect(() => {
     const webApp = window.Telegram?.WebApp
-    if (webApp) {
-      webApp.ready()
-      webApp.expand()
+    if (!webApp) return
+
+    webApp.ready()
+    webApp.expand()
+
+    const handleThemeChanged = () => {
+      setIsDark(webApp.colorScheme === 'dark')
+    }
+    webApp.onEvent('themeChanged', handleThemeChanged)
+    return () => {
+      webApp.offEvent('themeChanged', handleThemeChanged)
     }
   }, [])
 
-  const appearance =
-    window.Telegram?.WebApp?.colorScheme === 'dark' ? 'dark' : 'light'
-
   return (
-    <AppRoot appearance={appearance}>
-      <BrowserRouter>
-        <AppInner />
-      </BrowserRouter>
-    </AppRoot>
+    <div
+      data-theme={isDark ? 'dark' : 'light'}
+      style={{
+        background: 'var(--bg-primary)',
+        minHeight: '100vh',
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        color: 'var(--text-primary)',
+        WebkitFontSmoothing: 'antialiased',
+      }}
+    >
+      <ToastProvider>
+        <BrowserRouter>
+          <AppInner />
+        </BrowserRouter>
+      </ToastProvider>
+    </div>
   )
 }

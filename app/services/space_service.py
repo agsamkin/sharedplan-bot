@@ -150,6 +150,15 @@ async def kick_member(
     await session.flush()
 
 
+async def update_space_name(session: AsyncSession, space_id: UUID, name: str) -> Space | None:
+    """Обновить название пространства."""
+    space = await session.get(Space, space_id)
+    if space:
+        space.name = name.strip()
+        await session.flush()
+    return space
+
+
 async def delete_space(session: AsyncSession, space_id: UUID) -> None:
     """Удалить пространство (каскадно удаляет events, reminders, memberships)."""
     space = await session.get(Space, space_id)

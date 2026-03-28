@@ -22,6 +22,8 @@ declare global {
         }
         themeParams: Record<string, string>
         colorScheme: 'light' | 'dark'
+        onEvent: (event: string, cb: () => void) => void
+        offEvent: (event: string, cb: () => void) => void
       }
     }
   }

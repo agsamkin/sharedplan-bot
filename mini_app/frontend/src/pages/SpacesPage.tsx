@@ -1,8 +1,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Section, Cell, Badge, List } from '@telegram-apps/telegram-ui'
 import { getSpaces, type Space } from '../api/spaces'
+import { Header } from '../components/Header'
+import { Section, Divider } from '../components/Section'
+import { ListItem } from '../components/ListItem'
+import { Avatar } from '../components/Avatar'
 import { LoadingView, ErrorView, EmptyView } from '../components/StateViews'
+import { ChevronRight, IconBell } from '../components/icons'
 
 export function SpacesPage() {
   const navigate = useNavigate()
@@ -27,66 +31,67 @@ export function SpacesPage() {
     fetchSpaces()
   }, [fetchSpaces])
 
-  if (loading) return <LoadingView />
-  if (error) return <ErrorView message={error} onRetry={fetchSpaces} />
+  if (loading) return (
+    <>
+      <Header title="Пространства" />
+      <LoadingView />
+    </>
+  )
 
-  if (spaces.length === 0) {
-    return (
-      <div>
-        <EmptyView
-          icon="📅"
-          message="Нет пространств. Создай первое через бота командой /newspace"
-        />
-        <List>
-          <Section>
-            <Cell onClick={() => navigate('/settings/reminders')}>
-              Настройки напоминаний
-            </Cell>
-          </Section>
-        </List>
-      </div>
-    )
-  }
+  if (error) return (
+    <>
+      <Header title="Пространства" />
+      <ErrorView message={error} onRetry={fetchSpaces} />
+    </>
+  )
 
   return (
-    <List>
-      <Section header="Мои пространства">
-        {spaces.map((space) => (
-          <Cell
-            key={space.id}
-            subtitle={`${space.member_count} участн.`}
-            after={
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Badge type="number">
-                  {space.role === 'admin' ? '👑' : '👤'}
-                </Badge>
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    navigate(`/spaces/${space.id}/settings`)
-                  }}
-                  style={{
-                    fontSize: '20px',
-                    cursor: 'pointer',
-                    padding: '4px',
-                  }}
-                >
-                  ⚙️
-                </span>
-              </div>
-            }
-            onClick={() => navigate(`/spaces/${space.id}`)}
-          >
-            {space.name}
-          </Cell>
-        ))}
-      </Section>
+    <div style={{ background: 'var(--bg-primary)', minHeight: '100%' }}>
+      <Header title="Пространства" />
 
-      <Section>
-        <Cell onClick={() => navigate('/settings/reminders')}>
-          Настройки напоминаний
-        </Cell>
+      {spaces.length === 0 ? (
+        <Section>
+          <EmptyView message="Нет пространств. Создай первое через бота командой /newspace" />
+        </Section>
+      ) : (
+        <Section>
+          {spaces.map((s, i) => (
+            <div key={s.id}>
+              {i > 0 && <Divider />}
+              <ListItem
+                left={<Avatar name={s.name} id={s.id} />}
+                title={s.name}
+                subtitle={`${s.member_count} участн.`}
+                right={<ChevronRight />}
+                onClick={() => navigate(`/spaces/${s.id}`)}
+              />
+            </div>
+          ))}
+        </Section>
+      )}
+
+      <Section title="Настройки">
+        <ListItem
+          left={
+            <div style={{
+              width: 42, height: 42, borderRadius: 12,
+              position: 'relative',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--accent-orange)',
+            }}>
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: 12,
+                background: 'var(--accent-orange)', opacity: 0.08,
+              }} />
+              <div style={{ position: 'relative' }}><IconBell /></div>
+            </div>
+          }
+          title="Напоминания"
+          subtitle="Настроить интервалы"
+          right={<ChevronRight />}
+          onClick={() => navigate('/settings/reminders')}
+        />
       </Section>
-    </List>
+    </div>
   )
 }
