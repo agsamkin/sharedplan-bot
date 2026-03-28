@@ -13,6 +13,7 @@ from app.bot.callbacks import reminder_toggle as reminder_toggle_cb
 from app.bot.callbacks import space_select as space_select_cb
 from app.bot.handlers import event, events_list, help, reminders, space, start, voice
 from app.bot.commands import BOT_COMMANDS
+from app.bot.middlewares.access_control import AccessControlMiddleware
 from app.bot.middlewares.db_session import DbSessionMiddleware
 from app.bot.middlewares.user_profile import UserProfileMiddleware
 from app.config import settings
@@ -59,6 +60,7 @@ async def main() -> None:
     dp = Dispatcher()
 
     dp.update.middleware(DbSessionMiddleware())
+    dp.update.middleware(AccessControlMiddleware())
     dp.update.middleware(UserProfileMiddleware())
 
     dp.include_router(start.router)

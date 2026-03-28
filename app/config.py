@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str
     OPENROUTER_MODEL: str
     NEXARA_API_KEY: str
+    OWNER_TELEGRAM_ID: int
 
     TIMEZONE: str = "Europe/Moscow"
     REMINDER_CHECK_INTERVAL_SECONDS: int = 30
