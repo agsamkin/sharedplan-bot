@@ -7,13 +7,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.formatting import format_confirmation, format_date_with_weekday
+from app.bot.formatting import format_confirmation, format_conflict_warning, format_date_with_weekday
 from app.bot.keyboards.confirm import (
     event_confirm_keyboard,
     event_past_date_keyboard,
 )
 from app.bot.states.create_event import CreateEvent
-from app.services import space_service
+from app.services import event_service, space_service
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -48,9 +48,20 @@ async def on_space_select(
                 reply_markup=event_past_date_keyboard(),
             )
         else:
+            conflict_warning = None
+            if event_time is not None:
+                conflicts = await event_service.find_conflicting_events(
+                    session, space_id, event_date, event_time,
+                )
+                if conflicts:
+                    conflict_warning = format_conflict_warning(conflicts)
+
             await state.set_state(CreateEvent.waiting_for_confirm)
             await callback.message.edit_text(
-                format_confirmation(data["parsed_title"], event_date, event_time, transcript=transcript),
+                format_confirmation(
+                    data["parsed_title"], event_date, event_time,
+                    transcript=transcript, conflict_warning=conflict_warning,
+                ),
                 reply_markup=event_confirm_keyboard(),
             )
 

@@ -189,11 +189,30 @@ async def update_event(request: web.Request) -> web.Response:
             f"📝 Событие изменено: {updated_event.title}",
         )
 
+    # Проверяем конфликты при изменении даты/времени
+    conflicts_data = []
+    if date_time_changed and updated_event and updated_event.event_time is not None:
+        conflicts = await event_service.find_conflicting_events(
+            session,
+            updated_event.space_id,
+            updated_event.event_date,
+            updated_event.event_time,
+            exclude_event_id=event_id,
+        )
+        for c in conflicts:
+            conflicts_data.append({
+                "id": str(c.id),
+                "title": c.title,
+                "event_time": c.event_time.strftime("%H:%M") if c.event_time else None,
+            })
+
     # Получаем имя создателя для ответа
     creator = await session.get(User, user_id)
     creator_name = creator.first_name if creator else None
 
     result = _serialize_event(updated_event, creator_name=creator_name, is_owner=True)
+    if conflicts_data:
+        result["conflicts"] = conflicts_data
     return web.json_response(result)
 
 

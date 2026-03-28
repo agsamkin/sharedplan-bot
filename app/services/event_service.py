@@ -1,5 +1,5 @@
 import logging
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from uuid import UUID
 
 from sqlalchemy import and_, delete, or_, select
@@ -84,6 +84,43 @@ async def delete_event(session: AsyncSession, event_id: UUID) -> None:
     stmt = delete(Event).where(Event.id == event_id)
     await session.execute(stmt)
     await session.flush()
+
+
+async def find_conflicting_events(
+    session: AsyncSession,
+    space_id: UUID,
+    event_date: date,
+    event_time: time | None,
+    exclude_event_id: UUID | None = None,
+) -> list[Event]:
+    """Найти события в пространстве, пересекающиеся по времени (+-2 часа)."""
+    if event_time is None:
+        return []
+
+    event_dt = datetime.combine(event_date, event_time)
+    day_start = datetime.combine(event_date, time(0, 0))
+    day_end = datetime.combine(event_date, time(23, 59, 59))
+    window_start = max(event_dt - timedelta(hours=2), day_start).time()
+    window_end = min(event_dt + timedelta(hours=2), day_end).time()
+
+    conditions = [
+        Event.space_id == space_id,
+        Event.event_date == event_date,
+        Event.event_time.isnot(None),
+        Event.event_time > window_start,
+        Event.event_time < window_end,
+    ]
+
+    if exclude_event_id is not None:
+        conditions.append(Event.id != exclude_event_id)
+
+    stmt = (
+        select(Event)
+        .where(*conditions)
+        .order_by(Event.event_time.asc())
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
 
 
 async def update_event(

@@ -1,4 +1,10 @@
+from __future__ import annotations
+
 from datetime import date, time
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.db.models import Event
 
 MONTHS = [
     "", "января", "февраля", "марта", "апреля", "мая", "июня",
@@ -66,11 +72,23 @@ def format_date_short_with_weekday(d: date) -> str:
     return f"{d.day} {MONTHS[d.month]}, {weekday}"
 
 
+def format_conflict_warning(conflicts: list[Event]) -> str:
+    """Предупреждение о конфликтующих по времени событиях."""
+    lines = ["⚠️ На близкое время уже есть события:"]
+    for event in conflicts:
+        time_str = event.event_time.strftime("%H:%M") if event.event_time else ""
+        lines.append(f"• {event.title} ({time_str})")
+    return "\n".join(lines)
+
+
 def format_confirmation(
-    title: str, event_date: date, event_time: time | None, transcript: str | None = None,
+    title: str, event_date: date, event_time: time | None,
+    transcript: str | None = None, conflict_warning: str | None = None,
 ) -> str:
     """Карточка подтверждения события."""
     lines = []
+    if conflict_warning:
+        lines.append(conflict_warning + "\n")
     if transcript:
         lines.append(f"🎤 Распознано: «{transcript}»\n")
     lines.append("📌 Событие:")

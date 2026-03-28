@@ -8,11 +8,16 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.filters.not_command import NotCommandFilter
-from app.bot.formatting import PARSE_ERROR_MESSAGES, format_confirmation, format_date_with_weekday
+from app.bot.formatting import (
+    PARSE_ERROR_MESSAGES,
+    format_confirmation,
+    format_conflict_warning,
+    format_date_with_weekday,
+)
 from app.bot.keyboards.confirm import event_confirm_keyboard, event_past_date_keyboard
 from app.bot.keyboards.space_select import space_select_keyboard
 from app.bot.states.create_event import CreateEvent
-from app.services import space_service
+from app.services import event_service, space_service
 from app.config import settings
 from app.services.llm_parser import ParseError, ParsedEvent, parse_event
 
@@ -35,6 +40,8 @@ def _is_event_in_past(event_date: date, event_time=None) -> bool:
 async def _show_confirmation_or_past_warning(
     message: Message,
     state: FSMContext,
+    session: AsyncSession,
+    space_id: str,
     parsed: ParsedEvent,
     transcript: str | None = None,
 ) -> None:
@@ -48,10 +55,20 @@ async def _show_confirmation_or_past_warning(
             reply_markup=event_past_date_keyboard(),
         )
     else:
+        from uuid import UUID
+        conflict_warning = None
+        if parsed.event_time is not None:
+            conflicts = await event_service.find_conflicting_events(
+                session, UUID(space_id), parsed.event_date, parsed.event_time,
+            )
+            if conflicts:
+                conflict_warning = format_conflict_warning(conflicts)
+
         await state.set_state(CreateEvent.waiting_for_confirm)
         await message.answer(
             format_confirmation(
-                parsed.title, parsed.event_date, parsed.event_time, transcript=transcript,
+                parsed.title, parsed.event_date, parsed.event_time,
+                transcript=transcript, conflict_warning=conflict_warning,
             ),
             reply_markup=event_confirm_keyboard(),
         )
@@ -84,8 +101,11 @@ async def process_parsed_event(
     )
 
     if len(spaces) == 1:
-        await state.update_data(space_id=str(spaces[0]["id"]))
-        await _show_confirmation_or_past_warning(message, state, parsed, transcript)
+        space_id = str(spaces[0]["id"])
+        await state.update_data(space_id=space_id)
+        await _show_confirmation_or_past_warning(
+            message, state, session, space_id, parsed, transcript,
+        )
     else:
         await state.set_state(CreateEvent.waiting_for_space)
         await message.answer(

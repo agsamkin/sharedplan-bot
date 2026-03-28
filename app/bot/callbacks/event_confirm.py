@@ -8,7 +8,12 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.filters.not_command import NotCommandFilter
-from app.bot.formatting import PARSE_ERROR_MESSAGES, format_confirmation, format_notification
+from app.bot.formatting import (
+    PARSE_ERROR_MESSAGES,
+    format_confirmation,
+    format_conflict_warning,
+    format_notification,
+)
 from app.bot.keyboards.confirm import event_confirm_keyboard
 from app.bot.states.create_event import CreateEvent
 from app.services import event_service, reminder_service, space_service
@@ -107,6 +112,7 @@ async def handle_event_edit(
         await state.set_state(CreateEvent.waiting_for_edit)
         return
 
+    data = await state.get_data()
     await state.update_data(
         parsed_title=parsed.title,
         parsed_date=parsed.event_date.isoformat(),
@@ -114,16 +120,30 @@ async def handle_event_edit(
         raw_input=message.text,
         transcript=None,
     )
+
+    conflict_warning = None
+    if parsed.event_time is not None and data.get("space_id"):
+        conflicts = await event_service.find_conflicting_events(
+            session, UUID(data["space_id"]), parsed.event_date, parsed.event_time,
+        )
+        if conflicts:
+            conflict_warning = format_conflict_warning(conflicts)
+
     await state.set_state(CreateEvent.waiting_for_confirm)
 
     await message.answer(
-        format_confirmation(parsed.title, parsed.event_date, parsed.event_time),
+        format_confirmation(
+            parsed.title, parsed.event_date, parsed.event_time,
+            conflict_warning=conflict_warning,
+        ),
         reply_markup=event_confirm_keyboard(),
     )
 
 
 @router.callback_query(F.data == "event_past_confirm")
-async def on_event_past_confirm(callback: CallbackQuery, state: FSMContext) -> None:
+async def on_event_past_confirm(
+    callback: CallbackQuery, state: FSMContext, session: AsyncSession,
+) -> None:
     """Пользователь подтвердил создание события с прошедшей датой."""
     data = await state.get_data()
     if not data.get("parsed_title"):
@@ -134,9 +154,20 @@ async def on_event_past_confirm(callback: CallbackQuery, state: FSMContext) -> N
     event_time = time.fromisoformat(data["parsed_time"]) if data.get("parsed_time") else None
     transcript = data.get("transcript")
 
+    conflict_warning = None
+    if event_time is not None and data.get("space_id"):
+        conflicts = await event_service.find_conflicting_events(
+            session, UUID(data["space_id"]), event_date, event_time,
+        )
+        if conflicts:
+            conflict_warning = format_conflict_warning(conflicts)
+
     await state.set_state(CreateEvent.waiting_for_confirm)
     await callback.message.edit_text(
-        format_confirmation(data["parsed_title"], event_date, event_time, transcript=transcript),
+        format_confirmation(
+            data["parsed_title"], event_date, event_time,
+            transcript=transcript, conflict_warning=conflict_warning,
+        ),
         reply_markup=event_confirm_keyboard(),
     )
     await callback.answer()
