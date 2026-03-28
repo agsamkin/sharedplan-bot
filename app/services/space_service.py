@@ -93,7 +93,7 @@ async def join_space(
 async def get_space_members(session: AsyncSession, space_id: UUID) -> list[dict]:
     """Список участников пространства с информацией о пользователях."""
     stmt = (
-        select(User.id, User.first_name, User.username, UserSpace.role)
+        select(User.id, User.first_name, User.username, UserSpace.role, UserSpace.joined_at)
         .join(UserSpace, User.id == UserSpace.user_id)
         .where(UserSpace.space_id == space_id)
         .order_by(UserSpace.role, User.first_name)
@@ -105,6 +105,7 @@ async def get_space_members(session: AsyncSession, space_id: UUID) -> list[dict]
             "first_name": row.first_name,
             "username": row.username,
             "role": row.role,
+            "joined_at": row.joined_at.isoformat() if row.joined_at else None,
         }
         for row in rows
     ]

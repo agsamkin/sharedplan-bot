@@ -5,7 +5,6 @@ BOT_COMMANDS = [
     BotCommand(command="help", description="Список команд и помощь"),
     BotCommand(command="newspace", description="Создать пространство"),
     BotCommand(command="spaces", description="Мои пространства"),
-    BotCommand(command="space_info", description="Информация о пространстве"),
     BotCommand(command="events", description="Ближайшие события"),
-    BotCommand(command="reminders", description="Настройки напоминаний"),
+    BotCommand(command="app", description="Открыть приложение"),
 ]
