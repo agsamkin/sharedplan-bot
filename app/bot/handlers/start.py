@@ -2,10 +2,11 @@ import logging
 
 from aiogram import Bot, Router
 from aiogram.filters import CommandObject, CommandStart
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.db.models import DEFAULT_REMINDER_SETTINGS, User
 from app.services import space_service
 
@@ -83,6 +84,16 @@ async def cmd_start(message: Message, session: AsyncSession) -> None:
     await _send_welcome(message, session)
 
 
+def _webapp_keyboard() -> InlineKeyboardMarkup:
+    """Inline-кнопка для открытия Mini App."""
+    url = settings.MINI_APP_URL
+    if not url:
+        return InlineKeyboardMarkup(inline_keyboard=[])
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📱 Открыть приложение", web_app=WebAppInfo(url=url))]
+    ])
+
+
 async def _send_welcome(message: Message, session: AsyncSession) -> None:
     spaces = await space_service.get_user_spaces(session, message.from_user.id)
 
@@ -97,9 +108,8 @@ async def _send_welcome(message: Message, session: AsyncSession) -> None:
     if spaces:
         names = ", ".join(f"«{s['name']}»" for s in spaces)
         intro += f"\nТвои пространства: {names}\n"
-        intro += "\nОтправь текст или голосовое, чтобы создать событие.\n"
+        intro += "\nОтправь текст или голосовое, чтобы создать событие."
     else:
-        intro += "\nНачни с создания пространства — /newspace\n"
+        intro += "\nОткрой приложение, чтобы создать первое пространство."
 
-    intro += "Полный список команд — /help"
-    await message.answer(intro)
+    await message.answer(intro, reply_markup=_webapp_keyboard())

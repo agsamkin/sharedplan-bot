@@ -1,4 +1,4 @@
-import { get, del, put } from './client'
+import { get, post, del, put } from './client'
 
 export interface SpaceMember {
   user_id: number
@@ -25,6 +25,10 @@ export interface SpaceDetail {
 
 export function getSpaces(): Promise<Space[]> {
   return get<Space[]>('/api/spaces')
+}
+
+export function createSpace(name: string): Promise<Space> {
+  return post<Space>('/api/spaces', { name })
 }
 
 export function getSpace(id: string): Promise<SpaceDetail> {

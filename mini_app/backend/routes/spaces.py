@@ -2,7 +2,9 @@
 
 Эндпоинты:
 - GET /api/spaces — список пространств пользователя
+- POST /api/spaces — создание нового пространства
 - GET /api/spaces/{space_id} — информация о пространстве + участники
+- PUT /api/spaces/{space_id} — обновление названия пространства (только admin)
 - DELETE /api/spaces/{space_id} — удаление пространства (только admin)
 - DELETE /api/spaces/{space_id}/members/{user_id} — исключение участника (только admin)
 """
@@ -40,6 +42,38 @@ async def list_spaces(request: web.Request) -> web.Response:
         })
 
     return web.json_response(result)
+
+
+@routes.post("/api/spaces")
+async def create_space(request: web.Request) -> web.Response:
+    """Создание нового пространства."""
+    user_id: int = request["user_id"]
+    session = request["session"]
+
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Невалидное тело запроса"}, status=400)
+
+    name = body.get("name")
+    if name is None:
+        return web.json_response({"error": "Поле name обязательно"}, status=400)
+
+    name = str(name).strip()
+    if not name:
+        return web.json_response({"error": "Название не может быть пустым"}, status=400)
+    if len(name) > 255:
+        return web.json_response({"error": "Название слишком длинное (макс. 255 символов)"}, status=400)
+
+    space = await space_service.create_space(session, user_id, name)
+
+    return web.json_response({
+        "id": str(space.id),
+        "name": space.name,
+        "invite_code": space.invite_code,
+        "role": "admin",
+        "member_count": 1,
+    }, status=201)
 
 
 @routes.get("/api/spaces/{space_id}")

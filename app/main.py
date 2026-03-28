@@ -11,7 +11,8 @@ from sqlalchemy import text
 
 from app.bot.callbacks import event_confirm as event_confirm_cb
 from app.bot.callbacks import space_select as space_select_cb
-from app.bot.handlers import event, events_list, help, mini_app, reminders, space, start, voice
+from aiogram.types import MenuButtonWebApp, WebAppInfo
+from app.bot.handlers import event, help, privacy, start, voice
 from app.bot.commands import BOT_COMMANDS
 from app.bot.middlewares.access_control import AccessControlMiddleware
 from app.bot.middlewares.db_session import DbSessionMiddleware
@@ -66,10 +67,7 @@ async def main() -> None:
 
     dp.include_router(start.router)
     dp.include_router(help.router)
-    dp.include_router(space.router)
-    dp.include_router(events_list.router)
-    dp.include_router(reminders.router)
-    dp.include_router(mini_app.router)
+    dp.include_router(privacy.router)
     dp.include_router(event_confirm_cb.router)
     dp.include_router(space_select_cb.router)
     dp.include_router(voice.router)
@@ -94,6 +92,13 @@ async def main() -> None:
     logger.info("Mini App веб-сервер запущен на порту %d", settings.MINI_APP_PORT)
 
     await bot.set_my_commands(BOT_COMMANDS)
+    if settings.MINI_APP_URL:
+        await bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(
+                text="Открыть",
+                web_app=WebAppInfo(url=settings.MINI_APP_URL),
+            )
+        )
     logger.info("Бот @%s запускается...", bot_info.username)
     try:
         await dp.start_polling(bot, bot_username=bot_info.username)

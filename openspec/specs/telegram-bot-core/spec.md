@@ -48,12 +48,11 @@
 
 ### Requirement: Обработчик /help
 
-Команда `/help` ДОЛЖНА отправлять список доступных команд бота.
+Команда `/help` ДОЛЖНА отправлять краткую справку по работе с ботом. Справка ДОЛЖНА содержать: инструкцию по созданию событий (текст/голосовое сообщение), описание Mini App для управления (через кнопку меню), список команд: `/help`, `/privacy`.
 
 #### Scenario: Пользователь отправляет /help
-
 - **WHEN** пользователь отправляет `/help`
-- **THEN** бот отвечает сообщением со списком команд: `/start`, `/help`, `/newspace`, `/spaces`, `/space_info`, `/events`, `/reminders`
+- **THEN** бот отвечает сообщением со справкой по работе с ботом и ссылкой на Mini App
 
 ### Requirement: Middleware для DB-сессии
 
@@ -92,15 +91,11 @@ Middleware `UserProfileMiddleware` ДОЛЖЕН при каждом входящ
 
 ### Requirement: Логирование пользовательских команд
 
-Каждая обработанная команда бота ДОЛЖНА логироваться с информацией: command, user_id. Для команд, связанных с пространством — дополнительно space_id.
+Каждая обработанная команда бота ДОЛЖНА логироваться с информацией: command, user_id. Логируемые команды: `/start`, `/help`, `/privacy`.
 
-#### Scenario: Команда /spaces
-- **WHEN** пользователь с id=123 отправляет `/spaces`
-- **THEN** в лог записывается: `"/spaces user_id=123"`
-
-#### Scenario: Команда /events с выбором пространства
-- **WHEN** пользователь с id=123 запрашивает `/events` и выбирает пространство с id=abc-123
-- **THEN** в лог записывается: `"/events user_id=123 space_id=abc-123"`
+#### Scenario: Команда /privacy
+- **WHEN** пользователь с id=123 отправляет `/privacy`
+- **THEN** в лог записывается: `"/privacy user_id=123"`
 
 #### Scenario: Текстовое сообщение (создание события)
 - **WHEN** пользователь с id=123 отправляет текст для создания события
@@ -128,19 +123,15 @@ Middleware `UserProfileMiddleware` ДОЛЖЕН при каждом входящ
 
 ### Requirement: Точка входа в main.py
 
-Модуль `app/main.py` ДОЛЖЕН быть точкой входа: создание Bot, Dispatcher, подключение роутеров и middleware, запуск Alembic миграций, запуск aiohttp web server, запуск long-polling. ДОЛЖНЫ быть зарегистрированы роутеры обработчиков событий (`event.py`, `events_list.py`) и callback-обработчиков (`event_confirm.py`). Перед запуском polling ДОЛЖНЫ выполняться startup-проверки: PostgreSQL connectivity и Telegram token validation.
+Модуль `app/main.py` ДОЛЖЕН быть точкой входа: создание Bot, Dispatcher, подключение роутеров и middleware, запуск Alembic миграций, запуск aiohttp web server, запуск long-polling. ДОЛЖНЫ быть зарегистрированы роутеры: `start.router`, `help.router`, `privacy.router`, `event_confirm_cb.router`, `space_select_cb.router`, `voice.router`, `event.router`. Роутеры `space.router`, `events_list.router`, `reminders.router`, `mini_app.router` ДОЛЖНЫ быть удалены. При наличии `MINI_APP_URL` ДОЛЖНА устанавливаться `MenuButtonWebApp` через `set_chat_menu_button()`. Перед запуском polling ДОЛЖНЫ выполняться startup-проверки.
 
 #### Scenario: Запуск приложения
 - **WHEN** выполняется `python -m app.main`
-- **THEN** проверяется связность с PostgreSQL, применяются миграции, проверяется Telegram-токен, регистрируются все роутеры и middleware (включая UserProfileMiddleware), запускается APScheduler, запускается aiohttp web server, запускается long-polling
+- **THEN** проверяется связность с PostgreSQL, применяются миграции, проверяется Telegram-токен, регистрируются роутеры (start, help, privacy, event_confirm_cb, space_select_cb, voice, event) и middleware (включая UserProfileMiddleware), устанавливается MenuButtonWebApp, запускается APScheduler, запускается aiohttp web server, запускается long-polling
 
-#### Scenario: Роутер событий зарегистрирован
+#### Scenario: Удалённые роутеры не регистрируются
 - **WHEN** бот запущен
-- **THEN** текстовые сообщения (не команды) маршрутизируются к обработчику событий в `handlers/event.py`
-
-#### Scenario: Роутер списка событий зарегистрирован
-- **WHEN** бот запущен
-- **THEN** команда `/events` маршрутизируется к обработчику в `handlers/events_list.py`
+- **THEN** роутеры space, events_list, reminders и mini_app НЕ зарегистрированы
 
 ### Requirement: Зависимости в requirements.txt
 
