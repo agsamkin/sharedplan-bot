@@ -15,6 +15,9 @@ from app.services.speech_to_text import TranscriptionError, transcribe
 logger = logging.getLogger(__name__)
 router = Router()
 
+MAX_VOICE_DURATION_SECONDS = 120  # 2 минуты
+MAX_VOICE_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 МБ
+
 
 @router.message(StateFilter(None), F.voice)
 async def handle_voice_event(
@@ -24,10 +27,25 @@ async def handle_voice_event(
     bot: Bot,
 ) -> None:
     """Перехват голосовых сообщений для создания событий."""
+    voice = message.voice
+
+    if voice.duration > MAX_VOICE_DURATION_SECONDS:
+        await message.answer(
+            f"❌ Слишком длинное голосовое сообщение ({voice.duration} сек). "
+            f"Максимум — {MAX_VOICE_DURATION_SECONDS} сек."
+        )
+        return
+
+    if voice.file_size and voice.file_size > MAX_VOICE_FILE_SIZE_BYTES:
+        await message.answer(
+            "❌ Слишком большой аудиофайл. Попробуй записать сообщение короче."
+        )
+        return
+
     await bot.send_chat_action(message.chat.id, "typing")
 
     # Скачивание аудио в память
-    file = await bot.get_file(message.voice.file_id)
+    file = await bot.get_file(voice.file_id)
     buffer = BytesIO()
     await bot.download_file(file.file_path, buffer)
     audio_bytes = buffer.getvalue()
