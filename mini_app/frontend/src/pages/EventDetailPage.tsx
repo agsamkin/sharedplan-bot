@@ -17,9 +17,11 @@ export function EventDetailPage() {
   const [date, setDate] = useState('')
   const [time, setTime] = useState<string | null>(null)
   const [author, setAuthor] = useState('')
+  const [spaceId, setSpaceId] = useState<string | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -33,6 +35,7 @@ export function EventDetailPage() {
       setDate(event.event_date)
       setTime(event.event_time ? event.event_time.substring(0, 5) : null)
       setAuthor(event.creator_name)
+      setSpaceId(event.space_id ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить событие')
     } finally {
@@ -65,15 +68,18 @@ export function EventDetailPage() {
 
   const handleDelete = useCallback(async () => {
     if (!eventId) return
+    setDeleting(true)
     try {
       await deleteEvent(eventId)
       showToast('Событие удалено')
-      navigate(-1)
+      navigate(spaceId ? '/spaces/' + spaceId : '/', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось удалить')
+      const message = err instanceof Error ? err.message : 'Не удалось удалить'
+      setError(message)
+      showToast(message)
+      setDeleting(false)
     }
-    setConfirmDelete(false)
-  }, [eventId, navigate, showToast])
+  }, [eventId, spaceId, navigate, showToast])
 
   if (loading) return (
     <>
@@ -179,6 +185,8 @@ export function EventDetailPage() {
       {confirmDelete && (
         <ConfirmInline
           message={`Удалить \u00ab${title}\u00bb? Напоминания тоже будут удалены.`}
+          confirmText={deleting ? 'Удаление...' : 'Удалить'}
+          disabled={deleting}
           onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(false)}
         />

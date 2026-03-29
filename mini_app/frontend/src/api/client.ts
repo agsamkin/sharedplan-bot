@@ -48,7 +48,6 @@ async function request<T>(
 
   const headers: Record<string, string> = {
     'Authorization': `tma ${initData}`,
-    'Content-Type': 'application/json',
   }
 
   const options: RequestInit = {
@@ -57,6 +56,7 @@ async function request<T>(
   }
 
   if (body !== undefined) {
+    headers['Content-Type'] = 'application/json'
     options.body = JSON.stringify(body)
   }
 
