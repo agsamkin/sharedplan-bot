@@ -35,7 +35,7 @@ class ParsedEvent(BaseModel):
 class ParseError(Exception):
     def __init__(
         self,
-        error_type: Literal["invalid_json", "timeout", "network", "rate_limit"],
+        error_type: Literal["invalid_json", "timeout", "network", "rate_limit", "service_disabled"],
         message: str,
     ) -> None:
         self.error_type = error_type
@@ -137,6 +137,9 @@ def _now_in_tz() -> datetime:
 
 async def parse_event(user_text: str) -> ParsedEvent:
     """Парсинг текста пользователя в структурированное событие через LLM."""
+    if settings.OPENROUTER_API_KEY is None:
+        raise ParseError("service_disabled", "LLM-сервис не настроен: OPENROUTER_API_KEY отсутствует")
+
     now = _now_in_tz()
     today = now.date()
     current_time = now.time().replace(second=0, microsecond=0)

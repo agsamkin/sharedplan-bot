@@ -22,6 +22,9 @@ class TranscriptionError(Exception):
 
 async def transcribe(audio_bytes: bytes) -> str:
     """Транскрипция аудио через Nexara API."""
+    if settings.NEXARA_API_KEY is None:
+        raise TranscriptionError("service_disabled", "STT-сервис не настроен: NEXARA_API_KEY отсутствует")
+
     last_error: Exception | None = None
 
     for attempt in range(_MAX_RETRIES):

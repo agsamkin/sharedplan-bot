@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -6,9 +8,9 @@ class Settings(BaseSettings):
 
     TELEGRAM_BOT_TOKEN: str
     DATABASE_URL: str
-    OPENROUTER_API_KEY: str
-    OPENROUTER_MODEL: str
-    NEXARA_API_KEY: str
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_MODEL: Optional[str] = None
+    NEXARA_API_KEY: Optional[str] = None
     OWNER_TELEGRAM_ID: int
 
     TIMEZONE: str = "Europe/Moscow"

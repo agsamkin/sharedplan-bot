@@ -99,6 +99,12 @@ async def main() -> None:
                 web_app=WebAppInfo(url=settings.MINI_APP_URL),
             )
         )
+    # Логирование доступности опциональных функций
+    stt_status = "включён" if settings.NEXARA_API_KEY else "отключён"
+    llm_status = "включён" if settings.OPENROUTER_API_KEY else "отключён"
+    log_func = logger.info if settings.NEXARA_API_KEY and settings.OPENROUTER_API_KEY else logger.warning
+    log_func("Функции: STT (Nexara) — %s, LLM-парсинг (OpenRouter) — %s", stt_status, llm_status)
+
     logger.info("Бот @%s запускается...", bot_info.username)
     try:
         await dp.start_polling(bot, bot_username=bot_info.username)

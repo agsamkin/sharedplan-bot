@@ -4,7 +4,7 @@ from datetime import date, datetime
 from aiogram import Bot, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.filters.not_command import NotCommandFilter
@@ -141,7 +141,16 @@ async def handle_text_event(
     try:
         parsed = await parse_event(text)
     except ParseError as e:
-        await message.answer(f"❌ {PARSE_ERROR_MESSAGES.get(e.error_type, str(e))}")
+        error_text = f"❌ {PARSE_ERROR_MESSAGES.get(e.error_type, str(e))}"
+        reply_markup = None
+        if e.error_type == "service_disabled" and settings.MINI_APP_URL:
+            reply_markup = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(
+                    text="Открыть приложение",
+                    web_app=WebAppInfo(url=settings.MINI_APP_URL),
+                ),
+            ]])
+        await message.answer(error_text, reply_markup=reply_markup)
         return
 
     await process_parsed_event(message, state, session, bot, parsed, raw_input=text)

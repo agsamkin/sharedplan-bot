@@ -3,12 +3,13 @@ from io import BytesIO
 
 from aiogram import Bot, F, Router
 from aiogram.filters import StateFilter
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.formatting import PARSE_ERROR_MESSAGES, STT_ERROR_MESSAGES
 from app.bot.handlers.event import MAX_EVENT_TEXT_LENGTH, process_parsed_event
+from app.config import settings
 from app.services.llm_parser import ParseError, parse_event
 from app.services.speech_to_text import TranscriptionError, transcribe
 
@@ -72,10 +73,19 @@ async def handle_voice_event(
     try:
         parsed = await parse_event(transcript)
     except ParseError as e:
-        await message.answer(
+        error_text = (
             f"🎤 Распознано: «{transcript}»\n\n"
             f"❌ {PARSE_ERROR_MESSAGES.get(e.error_type, str(e))}"
         )
+        reply_markup = None
+        if e.error_type == "service_disabled" and settings.MINI_APP_URL:
+            reply_markup = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(
+                    text="Открыть приложение",
+                    web_app=WebAppInfo(url=settings.MINI_APP_URL),
+                ),
+            ]])
+        await message.answer(error_text, reply_markup=reply_markup)
         return
 
     await process_parsed_event(
