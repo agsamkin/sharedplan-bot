@@ -169,3 +169,12 @@ def format_event_deleted_notification(
         lines.append(f"📅 {date_str}")
     lines.append(f"👤 Удалил: {editor_name}")
     return "\n".join(lines)
+
+
+def format_space_deleted_notification(space_name: str, admin_name: str) -> str:
+    """Уведомление участников об удалении пространства."""
+    return (
+        f"🗑 Пространство «{space_name}» удалено\n\n"
+        f"👤 Удалил: {admin_name}\n"
+        f"ℹ️ Напоминания из этого пространства больше не будут приходить."
+    )

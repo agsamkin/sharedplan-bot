@@ -14,6 +14,8 @@ from uuid import UUID
 
 from aiohttp import web
 
+from app.bot.formatting import format_space_deleted_notification
+from app.db.models import User
 from app.services import space_service
 
 logger = logging.getLogger(__name__)
@@ -89,7 +91,6 @@ async def get_space(request: web.Request) -> web.Response:
 
     # Проверяем членство
     from app.db.models import UserSpace
-    from sqlalchemy import select
 
     membership = await session.get(UserSpace, (user_id, space_id))
     if membership is None:
@@ -182,7 +183,33 @@ async def delete_space(request: web.Request) -> web.Response:
     if not is_admin:
         return web.json_response({"error": "Только администратор может удалить пространство"}, status=403)
 
+    # Собираем данные до каскадного удаления
+    space = await space_service.get_space_by_id(session, space_id)
+    space_name = space.name if space else "Неизвестное"
+    members = await space_service.get_space_members(session, space_id)
+    admin_user = await session.get(User, user_id)
+    admin_name = admin_user.first_name if admin_user else "Неизвестный"
+
     await space_service.delete_space(session, space_id)
+    await session.commit()
+
+    # Уведомляем участников (fire-and-forget, после commit)
+    bot = request.app.get("bot")
+    if bot and members:
+        notification = format_space_deleted_notification(space_name, admin_name)
+        for member in members:
+            if member["user_id"] == user_id:
+                continue
+            try:
+                await bot.send_message(member["user_id"], notification)
+            except Exception as e:
+                logger.warning(
+                    "Не удалось уведомить об удалении пространства: user_id=%s space_id=%s error=%s",
+                    member["user_id"],
+                    space_id,
+                    e,
+                )
+
     return web.Response(status=204)
 
 
