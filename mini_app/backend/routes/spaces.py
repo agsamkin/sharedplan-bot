@@ -196,11 +196,15 @@ async def delete_space(request: web.Request) -> web.Response:
     # Уведомляем участников (fire-and-forget, после commit)
     bot = request.app.get("bot")
     if bot and members:
-        notification = format_space_deleted_notification(space_name, admin_name)
         for member in members:
             if member["user_id"] == user_id:
                 continue
             try:
+                member_user = await session.get(User, member["user_id"])
+                member_lang = member_user.language if member_user else "en"
+                notification = format_space_deleted_notification(
+                    space_name, admin_name, lang=member_lang,
+                )
                 await bot.send_message(member["user_id"], notification)
             except Exception as e:
                 logger.warning(

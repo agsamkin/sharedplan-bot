@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.models import DEFAULT_REMINDER_SETTINGS, User
+from app.i18n import normalize_language, t
 from app.services import space_service
 
 logger = logging.getLogger(__name__)
@@ -15,11 +16,13 @@ router = Router()
 
 
 async def _upsert_user(session: AsyncSession, message: Message) -> None:
+    detected_lang = normalize_language(message.from_user.language_code)
     stmt = pg_insert(User).values(
         id=message.from_user.id,
         username=message.from_user.username,
         first_name=message.from_user.first_name,
         reminder_settings=DEFAULT_REMINDER_SETTINGS,
+        language=detected_lang,
     ).on_conflict_do_update(
         index_elements=[User.id],
         set_={
@@ -32,7 +35,8 @@ async def _upsert_user(session: AsyncSession, message: Message) -> None:
 
 @router.message(CommandStart(deep_link=True))
 async def cmd_start_join(
-    message: Message, session: AsyncSession, command: CommandObject, bot: Bot
+    message: Message, session: AsyncSession, command: CommandObject, bot: Bot,
+    lang: str = "en",
 ) -> None:
     logger.info("/start user_id=%d deep_link=%s", message.from_user.id, command.args)
     await _upsert_user(session, message)
@@ -40,21 +44,21 @@ async def cmd_start_join(
     payload = command.args or ""
     if not payload.startswith("join_"):
         # Не join deep link — показываем приветствие
-        await _send_welcome(message, session)
+        await _send_welcome(message, session, lang)
         return
 
     invite_code = payload[5:]  # убираем "join_"
     space = await space_service.get_space_by_invite_code(session, invite_code)
     if not space:
-        await message.answer("Ссылка недействительна или пространство удалено.")
+        await message.answer(t(lang, "start.join.invalid_link"))
         return
 
     membership = await space_service.join_space(session, message.from_user.id, space.id)
     if membership is None:
-        await message.answer(f"Ты уже состоишь в пространстве «{space.name}».")
+        await message.answer(t(lang, "start.join.already_member", name=space.name))
         return
 
-    await message.answer(f"Ты присоединился к пространству «{space.name}»!")
+    await message.answer(t(lang, "start.join.success", name=space.name))
 
     # Уведомляем текущих участников
     members = await space_service.get_space_members(session, space.id)
@@ -65,7 +69,7 @@ async def cmd_start_join(
         try:
             await bot.send_message(
                 member["user_id"],
-                f"👋 {joiner_name} присоединился к «{space.name}»!",
+                t(lang, "start.join.notification", joiner=joiner_name, space=space.name),
             )
         except Exception as e:
             logger.warning(
@@ -78,38 +82,32 @@ async def cmd_start_join(
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, session: AsyncSession) -> None:
+async def cmd_start(message: Message, session: AsyncSession, lang: str = "en") -> None:
     logger.info("/start user_id=%d", message.from_user.id)
     await _upsert_user(session, message)
-    await _send_welcome(message, session)
+    await _send_welcome(message, session, lang)
 
 
-def _webapp_keyboard() -> InlineKeyboardMarkup:
+def _webapp_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
     """Inline-кнопка для открытия Mini App."""
     url = settings.MINI_APP_URL
     if not url:
         return InlineKeyboardMarkup(inline_keyboard=[])
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📱 Открыть приложение", web_app=WebAppInfo(url=url))]
+        [InlineKeyboardButton(text=t(lang, "start.open_app"), web_app=WebAppInfo(url=url))]
     ])
 
 
-async def _send_welcome(message: Message, session: AsyncSession) -> None:
+async def _send_welcome(message: Message, session: AsyncSession, lang: str = "en") -> None:
     spaces = await space_service.get_user_spaces(session, message.from_user.id)
 
-    intro = (
-        "Привет! Я помогу организовать совместные планы.\n\n"
-        "Что я умею:\n"
-        "📅 Создавать события из текста или голосовых сообщений\n"
-        "👥 Объединять участников в пространства с общим календарём\n"
-        "🔔 Отправлять персональные напоминания\n"
-    )
+    intro = t(lang, "start.welcome.intro")
 
     if spaces:
-        names = ", ".join(f"«{s['name']}»" for s in spaces)
-        intro += f"\nТвои пространства: {names}\n"
-        intro += "\nОтправь текст или голосовое, чтобы создать событие."
+        names = ", ".join(f"\u00ab{s['name']}\u00bb" for s in spaces)
+        intro += t(lang, "start.welcome.spaces", names=names)
+        intro += t(lang, "start.welcome.has_spaces")
     else:
-        intro += "\nОткрой приложение, чтобы создать первое пространство."
+        intro += t(lang, "start.welcome.no_spaces")
 
-    await message.answer(intro, reply_markup=_webapp_keyboard())
+    await message.answer(intro, reply_markup=_webapp_keyboard(lang))

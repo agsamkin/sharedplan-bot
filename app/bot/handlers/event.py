@@ -9,16 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.filters.not_command import NotCommandFilter
 from app.bot.formatting import (
-    PARSE_ERROR_MESSAGES,
     format_confirmation,
     format_conflict_warning,
     format_date_with_weekday,
+    get_parse_error_message,
 )
 from app.bot.keyboards.confirm import event_confirm_keyboard, event_past_date_keyboard
 from app.bot.keyboards.space_select import space_select_keyboard
 from app.bot.states.create_event import CreateEvent
 from app.services import event_service, space_service
 from app.config import settings
+from app.i18n import t
 from app.services.llm_parser import ParseError, ParsedEvent, parse_event
 
 logger = logging.getLogger(__name__)
@@ -44,15 +45,16 @@ async def _show_confirmation_or_past_warning(
     space_id: str,
     parsed: ParsedEvent,
     transcript: str | None = None,
+    lang: str = "ru",
 ) -> None:
     """Показать карточку подтверждения или предупреждение о прошедшей дате."""
     if _is_event_in_past(parsed.event_date, parsed.event_time):
         await state.set_state(CreateEvent.waiting_for_past_confirm)
         await message.answer(
-            f"⚠️ Дата уже прошла ({format_date_with_weekday(parsed.event_date)}).\n\n"
-            f"📝 {parsed.title}\n\n"
-            "Всё равно создать?",
-            reply_markup=event_past_date_keyboard(),
+            t(lang, "event.past_date_warning",
+              date=format_date_with_weekday(parsed.event_date, lang),
+              title=parsed.title),
+            reply_markup=event_past_date_keyboard(lang),
         )
     else:
         from uuid import UUID
@@ -62,15 +64,16 @@ async def _show_confirmation_or_past_warning(
                 session, UUID(space_id), parsed.event_date, parsed.event_time,
             )
             if conflicts:
-                conflict_warning = format_conflict_warning(conflicts)
+                conflict_warning = format_conflict_warning(conflicts, lang)
 
         await state.set_state(CreateEvent.waiting_for_confirm)
         await message.answer(
             format_confirmation(
                 parsed.title, parsed.event_date, parsed.event_time,
                 transcript=transcript, conflict_warning=conflict_warning,
+                lang=lang,
             ),
-            reply_markup=event_confirm_keyboard(),
+            reply_markup=event_confirm_keyboard(lang),
         )
 
 
@@ -82,14 +85,13 @@ async def process_parsed_event(
     parsed: ParsedEvent,
     raw_input: str,
     transcript: str | None = None,
+    lang: str = "en",
 ) -> None:
     """Общая логика после парсинга: выбор пространства, FSM, карточка подтверждения."""
     spaces = await space_service.get_user_spaces(session, message.from_user.id)
 
     if not spaces:
-        await message.answer(
-            "У тебя пока нет пространств. Создай первое через /newspace!"
-        )
+        await message.answer(t(lang, "event.no_spaces"))
         return
 
     await state.update_data(
@@ -98,18 +100,19 @@ async def process_parsed_event(
         parsed_time=parsed.event_time.strftime("%H:%M") if parsed.event_time else None,
         raw_input=raw_input,
         transcript=transcript,
+        lang=lang,
     )
 
     if len(spaces) == 1:
         space_id = str(spaces[0]["id"])
         await state.update_data(space_id=space_id)
         await _show_confirmation_or_past_warning(
-            message, state, session, space_id, parsed, transcript,
+            message, state, session, space_id, parsed, transcript, lang=lang,
         )
     else:
         await state.set_state(CreateEvent.waiting_for_space)
         await message.answer(
-            "В какое пространство добавить событие?",
+            t(lang, "event.select_space"),
             reply_markup=space_select_keyboard(spaces, "event"),
         )
 
@@ -123,6 +126,7 @@ async def handle_text_event(
     state: FSMContext,
     session: AsyncSession,
     bot: Bot,
+    lang: str = "en",
 ) -> None:
     """Перехват текстовых сообщений (не команд) для создания событий."""
     text = (message.text or "").strip()
@@ -131,7 +135,7 @@ async def handle_text_event(
 
     if len(text) > MAX_EVENT_TEXT_LENGTH:
         await message.answer(
-            f"❌ Слишком длинное сообщение. Опиши событие короче (до {MAX_EVENT_TEXT_LENGTH} символов)."
+            t(lang, "event.too_long", max_len=MAX_EVENT_TEXT_LENGTH)
         )
         return
 
@@ -141,16 +145,18 @@ async def handle_text_event(
     try:
         parsed = await parse_event(text)
     except ParseError as e:
-        error_text = f"❌ {PARSE_ERROR_MESSAGES.get(e.error_type, str(e))}"
+        error_text = f"\u274c {get_parse_error_message(lang, e.error_type)}"
         reply_markup = None
         if e.error_type == "service_disabled" and settings.MINI_APP_URL:
             reply_markup = InlineKeyboardMarkup(inline_keyboard=[[
                 InlineKeyboardButton(
-                    text="Открыть приложение",
+                    text=t(lang, "event.open_app"),
                     web_app=WebAppInfo(url=settings.MINI_APP_URL),
                 ),
             ]])
         await message.answer(error_text, reply_markup=reply_markup)
         return
 
-    await process_parsed_event(message, state, session, bot, parsed, raw_input=text)
+    await process_parsed_event(
+        message, state, session, bot, parsed, raw_input=text, lang=lang,
+    )

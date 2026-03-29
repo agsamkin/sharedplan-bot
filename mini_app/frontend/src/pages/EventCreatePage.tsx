@@ -4,12 +4,14 @@ import { createSpaceEvent, type SpaceEvent } from '../api/events'
 import { Header } from '../components/Header'
 import { Section } from '../components/Section'
 import { useToast } from '../components/Toast'
+import { useTranslation } from '../i18n'
 
 export function EventCreatePage() {
   const { id: spaceId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
   const { showToast } = useToast()
+  const { t } = useTranslation()
 
   const state = location.state as { events?: SpaceEvent[]; spaceName?: string } | null
   const spaceEvents = state?.events ?? []
@@ -61,10 +63,10 @@ export function EventCreatePage() {
         event_date: date,
         event_time: time,
       })
-      showToast('Событие создано')
+      showToast(t.eventCreated)
       navigate(-1)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Не удалось создать событие'
+      const msg = err instanceof Error ? err.message : t.createEventError
       setError(msg)
       showToast(msg)
     } finally {
@@ -86,28 +88,28 @@ export function EventCreatePage() {
 
   return (
     <div style={{ background: 'var(--bg-primary)', minHeight: '100%' }}>
-      <Header title="Новое событие" showBack onBack={() => navigate(-1)} />
+      <Header title={t.newEvent} showBack onBack={() => navigate(-1)} />
 
-      <Section title="Детали события">
+      <Section title={t.eventDetails}>
         <div style={{ padding: '12px 16px' }}>
-          <label style={labelStyle}>Название</label>
+          <label style={labelStyle}>{t.title}</label>
           <input
             value={title}
             onChange={e => setTitle(e.target.value)}
             style={inputStyle}
-            placeholder="Ужин с друзьями"
+            placeholder={t.eventTitlePlaceholder}
             autoFocus
           />
           {isTitleTooLong && (
             <div style={{ fontSize: 13, color: 'var(--accent-red)', marginTop: 4 }}>
-              Название слишком длинное (макс. 500 символов)
+              {t.titleTooLongDetail}
             </div>
           )}
         </div>
         <div style={{ height: 0.5, background: 'var(--border)', marginLeft: 16 }} />
         <div style={{ padding: '12px 16px', display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Дата</label>
+            <label style={labelStyle}>{t.date}</label>
             <input
               type="date"
               value={date}
@@ -116,13 +118,13 @@ export function EventCreatePage() {
             />
             {isPastDate && (
               <div style={{ fontSize: 13, color: 'var(--warning-text)', marginTop: 4 }}>
-                Выбранная дата уже прошла
+                {t.pastDate}
               </div>
             )}
           </div>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>
-              Время
+              {t.time}
             </label>
             <input
               type="time"
@@ -141,7 +143,7 @@ export function EventCreatePage() {
           color: 'var(--warning-text)', lineHeight: 1.5,
         }}>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>
-            На близкое время уже есть события:
+            {t.conflictWarning}
           </div>
           {conflicts.map(c => (
             <div key={c.id}>• {c.title}{c.event_time ? ` (${c.event_time.substring(0, 5)})` : ''}</div>
@@ -162,13 +164,13 @@ export function EventCreatePage() {
           fontWeight: 600, cursor: canSave ? 'pointer' : 'default', fontFamily: 'inherit',
           opacity: canSave ? 1 : 0.4,
         }}>
-          {saving ? 'Создание...' : 'Создать событие'}
+          {saving ? t.creating : t.createEvent}
         </button>
       </div>
       <div style={{ padding: '8px 16px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
         {spaceName
-          ? `Все участники пространства «${spaceName}» получат уведомление о новом событии.`
-          : 'Все участники пространства получат уведомление о новом событии.'
+          ? t.eventCreateHint.replace('{name}', spaceName)
+          : t.eventCreateHintGeneric
         }
       </div>
     </div>

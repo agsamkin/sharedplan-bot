@@ -12,11 +12,13 @@ import { ConfirmInline } from '../components/ConfirmInline'
 import { LoadingView, ErrorView, EmptyView } from '../components/StateViews'
 import { useToast } from '../components/Toast'
 import { ChevronRight, IconEdit, IconPeople, IconLink, IconTrash } from '../components/icons'
+import { useTranslation } from '../i18n'
 
 export function SpaceDetailPage() {
   const { id: spaceId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { t } = useTranslation()
 
   const [space, setSpace] = useState<SpaceDetail | null>(null)
   const [events, setEvents] = useState<SpaceEvent[]>([])
@@ -47,7 +49,7 @@ export function SpaceDetailPage() {
       setEvents(eventsResponse.events)
       setTotalCount(eventsResponse.total_count)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить данные')
+      setError(err instanceof Error ? err.message : t.loadErrorGeneric)
     } finally {
       setLoading(false)
     }
@@ -72,17 +74,17 @@ export function SpaceDetailPage() {
       document.execCommand('copy')
       document.body.removeChild(ta)
     }
-    showToast('Ссылка скопирована')
+    showToast(t.linkCopied)
   }, [space, showToast])
 
   const handleDeleteSpace = useCallback(async () => {
     if (!spaceId) return
     try {
       await deleteSpace(spaceId)
-      showToast('Пространство удалено')
+      showToast(t.spaceDeleted)
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось удалить')
+      setError(err instanceof Error ? err.message : t.deleteError)
     }
     setConfirmDelete(false)
   }, [spaceId, navigate, showToast])
@@ -104,7 +106,7 @@ export function SpaceDetailPage() {
   if (!space) return (
     <>
       <Header title="" showBack onBack={() => navigate(-1)} />
-      <ErrorView message="Пространство не найдено" />
+      <ErrorView message={t.spaceNotFound} />
     </>
   )
 
@@ -121,25 +123,25 @@ export function SpaceDetailPage() {
         {isAdmin && (
           <ActionButton
             icon={<IconEdit />}
-            label="Изменить"
+            label={t.editAction}
             onClick={() => navigate(`/spaces/${spaceId}/edit`)}
           />
         )}
         <ActionButton
           icon={<IconPeople />}
-          label="Участники"
+          label={t.membersAction}
           onClick={() => navigate(`/spaces/${spaceId}/members`)}
         />
         <ActionButton
           icon={<IconLink />}
-          label="Ссылка"
+          label={t.linkAction}
           color="var(--accent-purple)"
           onClick={handleCopyLink}
         />
         {isAdmin && (
           <ActionButton
             icon={<IconTrash />}
-            label="Удалить"
+            label={t.deleteAction}
             color="var(--accent-red)"
             onClick={() => setConfirmDelete(true)}
           />
@@ -148,7 +150,9 @@ export function SpaceDetailPage() {
 
       {confirmDelete && (
         <ConfirmInline
-          message={`Удалить «${space.name}»? Все события и напоминания будут потеряны.`}
+          message={t.deleteSpaceConfirm.replace('{name}', space.name)}
+          confirmText={t.deleteBtn}
+          cancelText={t.cancelBtn}
           onConfirm={handleDeleteSpace}
           onCancel={() => setConfirmDelete(false)}
         />
@@ -160,7 +164,7 @@ export function SpaceDetailPage() {
           textTransform: 'uppercase', letterSpacing: 0.8,
           padding: '20px 16px 8px',
         }}>
-          События · {totalCount}
+          {t.eventsTitle} · {totalCount}
         </div>
         <div style={{
           background: 'var(--bg-card)',
@@ -168,7 +172,7 @@ export function SpaceDetailPage() {
           borderBottom: '0.5px solid var(--border)',
         }}>
           {events.length === 0 ? (
-            <EmptyView message="Нет предстоящих событий" />
+            <EmptyView message={t.noEvents} />
           ) : (
             events.map((ev, i) => (
               <div key={ev.id}>
@@ -176,7 +180,7 @@ export function SpaceDetailPage() {
                 <ListItem
                   left={<DateBadge date={ev.event_date} />}
                   title={ev.title}
-                  subtitle={`${formatRelativeDate(ev.event_date)}${ev.event_time ? ` · ${formatTime(ev.event_time)}` : ''} · ${ev.creator_name}`}
+                  subtitle={`${formatRelativeDate(ev.event_date, t)}${ev.event_time ? ` · ${formatTime(ev.event_time, t)}` : ''} · ${ev.creator_name}`}
                   right={<ChevronRight />}
                   onClick={() => navigate(`/events/${ev.id}`)}
                 />

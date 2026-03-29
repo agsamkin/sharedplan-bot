@@ -42,6 +42,9 @@ class User(Base):
     reminder_settings: Mapped[dict] = mapped_column(
         JSONB, nullable=False, default=DEFAULT_REMINDER_SETTINGS
     )
+    language: Mapped[str] = mapped_column(
+        String(5), nullable=False, default="en", server_default="en"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

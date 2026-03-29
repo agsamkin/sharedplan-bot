@@ -5,11 +5,13 @@ import { Header } from '../components/Header'
 import { Section } from '../components/Section'
 import { LoadingView, ErrorView } from '../components/StateViews'
 import { useToast } from '../components/Toast'
+import { useTranslation } from '../i18n'
 
 export function SpaceEditPage() {
   const { id: spaceId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { t } = useTranslation()
 
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(true)
@@ -24,7 +26,7 @@ export function SpaceEditPage() {
       const data = await getSpace(spaceId)
       setName(data.name)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить')
+      setError(err instanceof Error ? err.message : t.loadError)
     } finally {
       setLoading(false)
     }
@@ -40,10 +42,10 @@ export function SpaceEditPage() {
     setError(null)
     try {
       await updateSpaceName(spaceId, name.trim())
-      showToast('Сохранено')
+      showToast(t.saved)
       navigate(-1)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить')
+      setError(err instanceof Error ? err.message : t.saveError)
     } finally {
       setSaving(false)
     }
@@ -51,23 +53,23 @@ export function SpaceEditPage() {
 
   if (loading) return (
     <>
-      <Header title="Редактировать" showBack onBack={() => navigate(-1)} />
+      <Header title={t.edit} showBack onBack={() => navigate(-1)} />
       <LoadingView />
     </>
   )
 
   if (error && !name) return (
     <>
-      <Header title="Редактировать" showBack onBack={() => navigate(-1)} />
+      <Header title={t.edit} showBack onBack={() => navigate(-1)} />
       <ErrorView message={error} onRetry={fetchSpace} />
     </>
   )
 
   return (
     <div style={{ background: 'var(--bg-primary)', minHeight: '100%' }}>
-      <Header title="Редактировать" showBack onBack={() => navigate(-1)} />
+      <Header title={t.edit} showBack onBack={() => navigate(-1)} />
 
-      <Section title="Название пространства">
+      <Section title={t.spaceName}>
         <div style={{ padding: '8px 16px 12px' }}>
           <input
             value={name}
@@ -78,7 +80,7 @@ export function SpaceEditPage() {
               background: 'var(--bg-card)', color: 'var(--text-primary)',
               boxSizing: 'border-box', fontFamily: 'inherit',
             }}
-            placeholder="Название"
+            placeholder={t.namePlaceholder}
             autoFocus
           />
         </div>
@@ -97,7 +99,7 @@ export function SpaceEditPage() {
           cursor: 'pointer', opacity: name.trim() && !saving ? 1 : 0.4,
           fontFamily: 'inherit',
         }}>
-          {saving ? 'Сохранение...' : 'Сохранить'}
+          {saving ? t.saving : t.save}
         </button>
       </div>
     </div>

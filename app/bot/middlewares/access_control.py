@@ -8,10 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.models import UserSpace
+from app.i18n import t
 
 logger = logging.getLogger(__name__)
-
-PRIVATE_BOT_MESSAGE = "Этот бот доступен только по приглашению. Попроси ссылку у владельца."
 
 
 class AccessControlMiddleware(BaseMiddleware):
@@ -42,6 +41,8 @@ class AccessControlMiddleware(BaseMiddleware):
         if self._is_join_deeplink(event):
             return await handler(event, data)
 
+        lang = data.get("lang", "en")
+
         # Проверка членства в пространстве
         session: AsyncSession | None = data.get("session")
         if session is None:
@@ -52,14 +53,14 @@ class AccessControlMiddleware(BaseMiddleware):
             is_member = await self._has_any_space(session, user_id)
         except Exception:
             logger.exception("Ошибка проверки доступа для user_id=%d", user_id)
-            await self._send_error(event)
+            await self._send_error(event, lang)
             return None
 
         if is_member:
             return await handler(event, data)
 
         # Неавторизованный пользователь
-        await self._send_private_message(event)
+        await self._send_private_message(event, lang)
         return None
 
     @staticmethod
@@ -83,17 +84,19 @@ class AccessControlMiddleware(BaseMiddleware):
         return result.scalar_one_or_none() is not None
 
     @staticmethod
-    async def _send_private_message(event: Update) -> None:
+    async def _send_private_message(event: Update, lang: str = "en") -> None:
         if event.message:
-            await event.message.answer(PRIVATE_BOT_MESSAGE)
-        elif event.callback_query:
-            await event.callback_query.answer(text="Доступ запрещён", show_alert=True)
-
-    @staticmethod
-    async def _send_error(event: Update) -> None:
-        if event.message:
-            await event.message.answer("Произошла ошибка. Попробуй позже.")
+            await event.message.answer(t(lang, "access.private_bot"))
         elif event.callback_query:
             await event.callback_query.answer(
-                text="Произошла ошибка", show_alert=True
+                text=t(lang, "access.denied"), show_alert=True,
+            )
+
+    @staticmethod
+    async def _send_error(event: Update, lang: str = "en") -> None:
+        if event.message:
+            await event.message.answer(t(lang, "access.error"))
+        elif event.callback_query:
+            await event.callback_query.answer(
+                text=t(lang, "access.error_short"), show_alert=True,
             )

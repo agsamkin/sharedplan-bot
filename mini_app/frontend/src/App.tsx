@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { ToastProvider } from './components/Toast'
+import { I18nProvider } from './I18nProvider'
 import './styles/theme.css'
 
 import { SpacesPage } from './pages/SpacesPage'
@@ -11,6 +12,7 @@ import { EventDetailPage } from './pages/EventDetailPage'
 import { ReminderSettingsPage } from './pages/ReminderSettingsPage'
 import { SpaceCreatePage } from './pages/SpaceCreatePage'
 import { EventCreatePage } from './pages/EventCreatePage'
+import { LanguageSettingsPage } from './pages/LanguageSettingsPage'
 
 function BackButtonHandler() {
   const navigate = useNavigate()
@@ -54,6 +56,7 @@ function AppInner() {
         <Route path="/spaces/:id/members" element={<MembersPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/settings/reminders" element={<ReminderSettingsPage />} />
+        <Route path="/settings/language" element={<LanguageSettingsPage />} />
       </Routes>
     </>
   )
@@ -93,7 +96,9 @@ export function App() {
     >
       <ToastProvider>
         <BrowserRouter>
-          <AppInner />
+          <I18nProvider>
+            <AppInner />
+          </I18nProvider>
         </BrowserRouter>
       </ToastProvider>
     </div>

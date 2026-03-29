@@ -6,12 +6,13 @@ import { Section, Divider } from '../components/Section'
 import { ListItem } from '../components/ListItem'
 import { Avatar } from '../components/Avatar'
 import { LoadingView, ErrorView, EmptyView } from '../components/StateViews'
-import { ChevronRight, IconBell, IconPlus } from '../components/icons'
+import { ChevronRight, IconBell, IconGlobe, IconPlus } from '../components/icons'
+import { useTranslation } from '../i18n'
 
-const AddButton = ({ onClick }: { onClick: () => void }) => (
+const AddButton = ({ onClick, ariaLabel }: { onClick: () => void; ariaLabel: string }) => (
   <button
     onClick={onClick}
-    aria-label="Создать пространство"
+    aria-label={ariaLabel}
     style={{
       width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-blue)',
@@ -24,6 +25,7 @@ const AddButton = ({ onClick }: { onClick: () => void }) => (
 
 export function SpacesPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [spaces, setSpaces] = useState<Space[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -35,7 +37,7 @@ export function SpacesPage() {
       const data = await getSpaces()
       setSpaces(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить пространства')
+      setError(err instanceof Error ? err.message : t.loadError)
     } finally {
       setLoading(false)
     }
@@ -47,25 +49,25 @@ export function SpacesPage() {
 
   if (loading) return (
     <>
-      <Header title="Пространства" right={<AddButton onClick={() => navigate('/spaces/new')} />} />
+      <Header title={t.spaces} right={<AddButton onClick={() => navigate('/spaces/new')} ariaLabel={t.createSpaceAriaLabel} />} />
       <LoadingView />
     </>
   )
 
   if (error) return (
     <>
-      <Header title="Пространства" right={<AddButton onClick={() => navigate('/spaces/new')} />} />
+      <Header title={t.spaces} right={<AddButton onClick={() => navigate('/spaces/new')} ariaLabel={t.createSpaceAriaLabel} />} />
       <ErrorView message={error} onRetry={fetchSpaces} />
     </>
   )
 
   return (
     <div style={{ background: 'var(--bg-primary)', minHeight: '100%' }}>
-      <Header title="Пространства" right={<AddButton onClick={() => navigate('/spaces/new')} />} />
+      <Header title={t.spaces} right={<AddButton onClick={() => navigate('/spaces/new')} ariaLabel={t.createSpaceAriaLabel} />} />
 
       {spaces.length === 0 ? (
         <Section>
-          <EmptyView message="Нет пространств. Нажми + чтобы создать первое." />
+          <EmptyView message={t.emptySpaces} />
         </Section>
       ) : (
         <Section>
@@ -75,7 +77,7 @@ export function SpacesPage() {
               <ListItem
                 left={<Avatar name={s.name} id={s.id} />}
                 title={s.name}
-                subtitle={`${s.member_count} участн.`}
+                subtitle={`${s.member_count} ${t.membersUnit}`}
                 right={<ChevronRight />}
                 onClick={() => navigate(`/spaces/${s.id}`)}
               />
@@ -84,7 +86,7 @@ export function SpacesPage() {
         </Section>
       )}
 
-      <Section title="Настройки">
+      <Section title={t.settings}>
         <ListItem
           left={
             <div style={{
@@ -100,10 +102,31 @@ export function SpacesPage() {
               <div style={{ position: 'relative' }}><IconBell /></div>
             </div>
           }
-          title="Напоминания"
-          subtitle="Настроить интервалы"
+          title={t.reminders}
+          subtitle={t.reminderSubtitle}
           right={<ChevronRight />}
           onClick={() => navigate('/settings/reminders')}
+        />
+        <Divider />
+        <ListItem
+          left={
+            <div style={{
+              width: 42, height: 42, borderRadius: 12,
+              position: 'relative',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--accent-blue)',
+            }}>
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: 12,
+                background: 'var(--accent-blue)', opacity: 0.08,
+              }} />
+              <div style={{ position: 'relative' }}><IconGlobe /></div>
+            </div>
+          }
+          title={t.language}
+          subtitle={t.langName}
+          right={<ChevronRight />}
+          onClick={() => navigate('/settings/language')}
         />
       </Section>
     </div>

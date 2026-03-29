@@ -20,10 +20,11 @@ async def process_due_reminders(
 
         logger.info("Найдено %d наступивших напоминаний", len(reminders))
 
-        for reminder, event_title, event_date, event_time, space_name in reminders:
+        for reminder, event_title, event_date, event_time, space_name, user_language in reminders:
             try:
                 text = format_reminder_message(
                     event_title, event_date, event_time, space_name, reminder.reminder_type,
+                    lang=user_language or "en",
                 )
                 await bot.send_message(reminder.user_id, text)
             except Exception as e:

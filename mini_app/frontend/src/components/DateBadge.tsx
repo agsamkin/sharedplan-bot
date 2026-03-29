@@ -1,10 +1,11 @@
-const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+import { useTranslation } from '../i18n'
 
 interface DateBadgeProps {
   date: string; // "YYYY-MM-DD"
 }
 
 export function DateBadge({ date }: DateBadgeProps) {
+  const { t } = useTranslation()
   const d = new Date(date + 'T00:00:00');
   return (
     <div style={{
@@ -18,7 +19,7 @@ export function DateBadge({ date }: DateBadgeProps) {
       <span style={{
         fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 500,
       }}>
-        {MONTHS[d.getMonth()]}
+        {t.months[d.getMonth()]}
       </span>
     </div>
   );

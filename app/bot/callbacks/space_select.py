@@ -13,6 +13,7 @@ from app.bot.keyboards.confirm import (
     event_past_date_keyboard,
 )
 from app.bot.states.create_event import CreateEvent
+from app.i18n import t
 from app.services import event_service, space_service
 
 logger = logging.getLogger(__name__)
@@ -22,17 +23,20 @@ router = Router()
 @router.callback_query(F.data.startswith("space_select:"))
 async def on_space_select(
     callback: CallbackQuery, session: AsyncSession, bot_username: str, state: FSMContext,
+    lang: str = "en",
 ) -> None:
     parts = callback.data.split(":")
     if len(parts) < 3:
-        await callback.answer("Неизвестное действие")
+        await callback.answer(t(lang, "cb.space.unknown_action"))
         return
+
+    data = await state.get_data()
+    lang = data.get("lang", lang)
 
     space_id = UUID(parts[1])
     action = parts[2]
 
     if action == "event":
-        data = await state.get_data()
         event_date = date.fromisoformat(data["parsed_date"])
         event_time = time.fromisoformat(data["parsed_time"]) if data.get("parsed_time") else None
         transcript = data.get("transcript")
@@ -42,10 +46,10 @@ async def on_space_select(
         if _is_event_in_past(event_date, event_time):
             await state.set_state(CreateEvent.waiting_for_past_confirm)
             await callback.message.edit_text(
-                f"⚠️ Дата уже прошла ({format_date_with_weekday(event_date)}).\n\n"
-                f"📝 {data['parsed_title']}\n\n"
-                "Всё равно создать?",
-                reply_markup=event_past_date_keyboard(),
+                t(lang, "event.past_date_warning",
+                  date=format_date_with_weekday(event_date, lang),
+                  title=data["parsed_title"]),
+                reply_markup=event_past_date_keyboard(lang),
             )
         else:
             conflict_warning = None
@@ -54,18 +58,19 @@ async def on_space_select(
                     session, space_id, event_date, event_time,
                 )
                 if conflicts:
-                    conflict_warning = format_conflict_warning(conflicts)
+                    conflict_warning = format_conflict_warning(conflicts, lang)
 
             await state.set_state(CreateEvent.waiting_for_confirm)
             await callback.message.edit_text(
                 format_confirmation(
                     data["parsed_title"], event_date, event_time,
                     transcript=transcript, conflict_warning=conflict_warning,
+                    lang=lang,
                 ),
-                reply_markup=event_confirm_keyboard(),
+                reply_markup=event_confirm_keyboard(lang),
             )
 
     else:
-        await callback.answer("Это действие доступно в приложении")
+        await callback.answer(t(lang, "cb.space.use_app"))
 
     await callback.answer()

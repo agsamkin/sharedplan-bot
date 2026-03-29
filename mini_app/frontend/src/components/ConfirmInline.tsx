@@ -1,13 +1,13 @@
 interface ConfirmInlineProps {
   message: string;
-  confirmText?: string;
-  cancelText?: string;
+  confirmText: string;
+  cancelText: string;
   disabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export function ConfirmInline({ message, confirmText = 'Удалить', cancelText = 'Отмена', disabled = false, onConfirm, onCancel }: ConfirmInlineProps) {
+export function ConfirmInline({ message, confirmText, cancelText, disabled = false, onConfirm, onCancel }: ConfirmInlineProps) {
   return (
     <div style={{ margin: 16, padding: 16, background: 'var(--confirm-bg)', borderRadius: 12 }}>
       <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--confirm-text)', marginBottom: 12 }}>

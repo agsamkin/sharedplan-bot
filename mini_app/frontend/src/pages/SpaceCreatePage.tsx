@@ -4,10 +4,12 @@ import { createSpace } from '../api/spaces'
 import { Header } from '../components/Header'
 import { Section } from '../components/Section'
 import { useToast } from '../components/Toast'
+import { useTranslation } from '../i18n'
 
 export function SpaceCreatePage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { t } = useTranslation()
 
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -19,10 +21,10 @@ export function SpaceCreatePage() {
     setError(null)
     try {
       await createSpace(name.trim())
-      showToast('Пространство создано')
+      showToast(t.spaceCreated)
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось создать пространство')
+      setError(err instanceof Error ? err.message : t.createError)
     } finally {
       setSaving(false)
     }
@@ -30,12 +32,12 @@ export function SpaceCreatePage() {
 
   return (
     <div style={{ background: 'var(--bg-primary)', minHeight: '100%' }}>
-      <Header title="Новое пространство" showBack onBack={() => navigate(-1)} />
+      <Header title={t.newSpace} showBack onBack={() => navigate(-1)} />
 
-      <Section title="Название пространства">
+      <Section title={t.spaceNameLabel}>
         <div style={{ padding: '8px 16px 12px' }}>
           <label htmlFor="space-name" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }}>
-            Название пространства
+            {t.spaceNameLabel}
           </label>
           <input
             id="space-name"
@@ -47,7 +49,7 @@ export function SpaceCreatePage() {
               background: 'var(--bg-card)', color: 'var(--text-primary)',
               boxSizing: 'border-box', fontFamily: 'inherit',
             }}
-            placeholder='Например, «Семья» или «Работа»'
+            placeholder={t.spaceNamePlaceholder}
             autoFocus
           />
         </div>
@@ -67,12 +69,12 @@ export function SpaceCreatePage() {
           opacity: name.trim() && !saving ? 1 : 0.4,
           fontFamily: 'inherit',
         }}>
-          {saving ? 'Создание...' : 'Создать'}
+          {saving ? t.creating : t.create}
         </button>
       </div>
 
       <div style={{ padding: '8px 16px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-        Вы станете администратором. Пригласите участников по ссылке после создания.
+        {t.spaceCreateHint}
       </div>
     </div>
   )

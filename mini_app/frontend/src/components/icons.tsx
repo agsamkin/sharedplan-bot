@@ -78,3 +78,11 @@ export const IconPlus = () => (
     <path d="M10 4V16M4 10H16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
   </svg>
 );
+
+export const IconGlobe = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.2"/>
+    <ellipse cx="9" cy="9" rx="3.5" ry="7" stroke="currentColor" strokeWidth="1.1"/>
+    <path d="M2.5 6.5h13M2.5 11.5h13" stroke="currentColor" strokeWidth="1.1"/>
+  </svg>
+);

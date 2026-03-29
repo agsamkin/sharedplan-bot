@@ -7,11 +7,13 @@ import { ConfirmInline } from '../components/ConfirmInline'
 import { LoadingView, ErrorView } from '../components/StateViews'
 import { useToast } from '../components/Toast'
 import { IconPerson } from '../components/icons'
+import { useTranslation } from '../i18n'
 
 export function EventDetailPage() {
   const { id: eventId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { t } = useTranslation()
 
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
@@ -39,7 +41,7 @@ export function EventDetailPage() {
       setSpaceId(event.space_id ?? null)
       setIsOwner(!!event.is_owner)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить событие')
+      setError(err instanceof Error ? err.message : t.loadEventError)
     } finally {
       setLoading(false)
     }
@@ -59,10 +61,10 @@ export function EventDetailPage() {
         event_date: date,
         event_time: time || null,
       })
-      showToast('Событие обновлено')
+      showToast(t.eventUpdated)
       navigate(-1)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить')
+      setError(err instanceof Error ? err.message : t.saveError)
     } finally {
       setSaving(false)
     }
@@ -73,10 +75,10 @@ export function EventDetailPage() {
     setDeleting(true)
     try {
       await deleteEvent(eventId)
-      showToast('Событие удалено')
+      showToast(t.eventDeleted)
       navigate(spaceId ? '/spaces/' + spaceId : '/', { replace: true })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Не удалось удалить'
+      const message = err instanceof Error ? err.message : t.deleteError
       setError(message)
       showToast(message)
       setDeleting(false)
@@ -85,14 +87,14 @@ export function EventDetailPage() {
 
   if (loading) return (
     <>
-      <Header title="Событие" showBack onBack={() => navigate(-1)} />
+      <Header title={t.event} showBack onBack={() => navigate(-1)} />
       <LoadingView />
     </>
   )
 
   if (error && !title) return (
     <>
-      <Header title="Событие" showBack onBack={() => navigate(-1)} />
+      <Header title={t.event} showBack onBack={() => navigate(-1)} />
       <ErrorView message={error} onRetry={fetchEvent} />
     </>
   )
@@ -115,11 +117,11 @@ export function EventDetailPage() {
 
   return (
     <div style={{ background: 'var(--bg-primary)', minHeight: '100%' }}>
-      <Header title={isOwner ? 'Редактирование' : 'Событие'} showBack onBack={() => navigate(-1)} />
+      <Header title={isOwner ? t.editing : t.event} showBack onBack={() => navigate(-1)} />
 
-      <Section title="Детали события">
+      <Section title={t.eventDetails}>
         <div style={{ padding: '12px 16px' }}>
-          <label style={labelStyle}>Название</label>
+          <label style={labelStyle}>{t.title}</label>
           <input
             value={title}
             onChange={e => setTitle(e.target.value)}
@@ -130,7 +132,7 @@ export function EventDetailPage() {
         <div style={{ height: 0.5, background: 'var(--border)', marginLeft: 16 }} />
         <div style={{ padding: '12px 16px', display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Дата</label>
+            <label style={labelStyle}>{t.date}</label>
             <input
               type="date"
               value={date}
@@ -140,7 +142,7 @@ export function EventDetailPage() {
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Время</label>
+            <label style={labelStyle}>{t.time}</label>
             <input
               type="time"
               value={time || ''}
@@ -159,7 +161,7 @@ export function EventDetailPage() {
           color: 'var(--text-secondary)',
         }}>
           <IconPerson />
-          <span style={{ fontSize: 14 }}>Создал: {author}</span>
+          <span style={{ fontSize: 14 }}>{t.createdBy}: {author}</span>
         </div>
       </Section>
 
@@ -177,7 +179,7 @@ export function EventDetailPage() {
             fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
             opacity: saving || !title.trim() || !date ? 0.4 : 1,
           }}>
-            {saving ? 'Сохранение...' : 'Сохранить'}
+            {saving ? t.saving : t.save}
           </button>
         </div>
       )}
@@ -190,15 +192,16 @@ export function EventDetailPage() {
             background: 'var(--confirm-bg)', color: 'var(--accent-red)',
             fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
           }}>
-            Удалить событие
+            {t.deleteEvent}
           </button>
         </div>
       )}
 
       {isOwner && confirmDelete && (
         <ConfirmInline
-          message={`Удалить \u00ab${title}\u00bb? Напоминания тоже будут удалены.`}
-          confirmText={deleting ? 'Удаление...' : 'Удалить'}
+          message={t.deleteEventConfirm.replace('{title}', title)}
+          confirmText={deleting ? t.deleting : t.deleteBtn}
+          cancelText={t.cancelBtn}
           disabled={deleting}
           onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(false)}

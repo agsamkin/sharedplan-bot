@@ -75,7 +75,7 @@ Middleware `db_session.py` ДОЛЖЕН создавать async-сессию SQ
 
 ### Requirement: Middleware обновления профиля пользователя
 
-Middleware `UserProfileMiddleware` ДОЛЖЕН при каждом входящем сообщении или callback обновлять `first_name` и `username` пользователя в таблице `users`. Middleware ДОЛЖЕН регистрироваться после `DbSessionMiddleware`.
+Middleware `UserProfileMiddleware` обновляет `first_name` и `username` пользователя при каждом входящем сообщении или callback. Регистрируется после `DbSessionMiddleware`. При upsert нового пользователя middleware ДОЛЖЕН определить язык из `language_code` Telegram: если `language_code` начинается с `"ru"` — устанавливает `language = "ru"`, иначе — `language = "en"`. Для существующих пользователей `language` НЕ ДОЛЖЕН перезаписываться. После upsert middleware ДОЛЖЕН передать `data["lang"]` со значением `language` пользователя из БД.
 
 #### Scenario: first_name изменился в Telegram
 - **WHEN** пользователь с id=123 отправляет сообщение, и его текущий `first_name` в Telegram отличается от записи в БД
@@ -88,6 +88,30 @@ Middleware `UserProfileMiddleware` ДОЛЖЕН при каждом входящ
 #### Scenario: username стал NULL
 - **WHEN** пользователь удалил свой Telegram username
 - **THEN** поле `username` обновляется на NULL в таблице `users`
+
+#### Scenario: Новый пользователь с русским Telegram
+- **WHEN** пользователь с `language_code = "ru-RU"` впервые взаимодействует с ботом
+- **THEN** создаётся запись с `language = "ru"`, `data["lang"] = "ru"`
+
+#### Scenario: Новый пользователь с английским Telegram
+- **WHEN** пользователь с `language_code = "en"` впервые взаимодействует с ботом
+- **THEN** создаётся запись с `language = "en"`, `data["lang"] = "en"`
+
+#### Scenario: Новый пользователь с неизвестным языком
+- **WHEN** пользователь с `language_code = "de"` впервые взаимодействует с ботом
+- **THEN** создаётся запись с `language = "en"`, `data["lang"] = "en"`
+
+#### Scenario: Существующий пользователь — язык не перезаписывается
+- **WHEN** существующий пользователь с `language = "ru"` отправляет сообщение, а его `language_code` в Telegram сменился на `"en"`
+- **THEN** поле `language` в БД остаётся `"ru"`, `data["lang"] = "ru"`
+
+#### Scenario: first_name изменился
+- **WHEN** пользователь с изменённым `first_name` отправляет сообщение
+- **THEN** `first_name` обновляется, `language` не затрагивается
+
+#### Scenario: username стал NULL (при смене языка не затрагивается)
+- **WHEN** пользователь удалил username в Telegram
+- **THEN** `username` обновляется на NULL, `language` не затрагивается
 
 ### Requirement: Логирование пользовательских команд
 

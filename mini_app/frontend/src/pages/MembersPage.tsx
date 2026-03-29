@@ -7,11 +7,13 @@ import { ListItem } from '../components/ListItem'
 import { Avatar } from '../components/Avatar'
 import { LoadingView, ErrorView } from '../components/StateViews'
 import { useToast } from '../components/Toast'
+import { useTranslation } from '../i18n'
 
 export function MembersPage() {
   const { id: spaceId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { t } = useTranslation()
 
   const [space, setSpace] = useState<SpaceDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -35,7 +37,7 @@ export function MembersPage() {
       const data = await getSpace(spaceId)
       setSpace(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить')
+      setError(err instanceof Error ? err.message : t.loadError)
     } finally {
       setLoading(false)
     }
@@ -53,9 +55,9 @@ export function MembersPage() {
         if (!prev) return prev
         return { ...prev, members: prev.members.filter(m => m.user_id !== userId) }
       })
-      showToast(`${name} удалён`)
+      showToast(t.memberRemoved.replace('{name}', name))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось удалить')
+      setError(err instanceof Error ? err.message : t.deleteError)
     }
     setConfirmDelete(null)
   }, [spaceId, showToast])
@@ -64,14 +66,14 @@ export function MembersPage() {
 
   if (loading) return (
     <>
-      <Header title="Участники" showBack onBack={() => navigate(-1)} />
+      <Header title={t.members} showBack onBack={() => navigate(-1)} />
       <LoadingView />
     </>
   )
 
   if (error && !space) return (
     <>
-      <Header title="Участники" showBack onBack={() => navigate(-1)} />
+      <Header title={t.members} showBack onBack={() => navigate(-1)} />
       <ErrorView message={error} onRetry={fetchSpace} />
     </>
   )
@@ -82,16 +84,16 @@ export function MembersPage() {
 
   return (
     <div style={{ background: 'var(--bg-primary)', minHeight: '100%' }}>
-      <Header title="Участники" showBack onBack={() => navigate(-1)} />
+      <Header title={t.members} showBack onBack={() => navigate(-1)} />
 
-      <Section title={`${members.length} участников`}>
+      <Section title={t.membersCount.replace('{n}', members.length.toString())}>
         {members.map((m, i) => (
           <div key={m.user_id}>
             {i > 0 && <Divider />}
             <ListItem
               left={<Avatar name={m.first_name} size={38} id={m.user_id} />}
               title={m.first_name}
-              subtitle={`@${m.username || '\u2014'}${m.role === 'admin' ? ' \u00b7 \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440' : ''}`}
+              subtitle={`@${m.username || '\u2014'}${m.role === 'admin' ? ` \u00b7 ${t.administrator}` : ''}`}
               right={
                 isAdmin && m.user_id !== currentUserId ? (
                   <button
@@ -103,7 +105,7 @@ export function MembersPage() {
                       fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                     }}
                   >
-                    Удалить
+                    {t.removeMember}
                   </button>
                 ) : m.role === 'admin' ? (
                   <span style={{
@@ -111,7 +113,7 @@ export function MembersPage() {
                     background: 'var(--badge-admin-bg)',
                     padding: '3px 10px', borderRadius: 6, fontWeight: 600,
                   }}>
-                    admin
+                    {t.administrator}
                   </span>
                 ) : null
               }
@@ -119,19 +121,19 @@ export function MembersPage() {
             {confirmDelete === m.user_id && (
               <div style={{ padding: '8px 16px 12px 70px' }}>
                 <div style={{ padding: 12, background: 'var(--confirm-bg)', borderRadius: 10, fontSize: 13 }}>
-                  <span style={{ color: 'var(--confirm-text)' }}>Удалить {m.first_name} из пространства?</span>
+                  <span style={{ color: 'var(--confirm-text)' }}>{t.removeMemberConfirm.replace('{name}', m.first_name)}</span>
                   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                     <button onClick={() => handleRemove(m.user_id, m.first_name)} style={{
                       padding: '7px 16px', borderRadius: 8, border: 'none',
                       background: 'var(--accent-red)', color: '#fff', fontSize: 12,
                       fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                    }}>Да, удалить</button>
+                    }}>{t.yesRemove}</button>
                     <button onClick={() => setConfirmDelete(null)} style={{
                       padding: '7px 16px', borderRadius: 8,
                       border: '0.5px solid var(--border)',
                       background: 'var(--bg-card)', fontSize: 12, cursor: 'pointer',
                       fontFamily: 'inherit', color: 'var(--text-primary)',
-                    }}>Отмена</button>
+                    }}>{t.cancelBtn}</button>
                   </div>
                 </div>
               </div>
@@ -144,7 +146,7 @@ export function MembersPage() {
         padding: 16, fontSize: 13, color: 'var(--text-secondary)',
         textAlign: 'center', lineHeight: 1.5,
       }}>
-        Новые участники присоединяются по invite-ссылке пространства
+        {t.membersInviteHint}
       </div>
     </div>
   )

@@ -8,26 +8,9 @@ from zoneinfo import ZoneInfo
 
 from app.config import settings
 from app.db.models import Event, ScheduledReminder, Space, User, UserSpace
+from app.i18n import get_relative_labels, t
 
 logger = logging.getLogger(__name__)
-
-REMINDER_LABELS = {
-    "1d": "За 1 день",
-    "2h": "За 2 часа",
-    "1h": "За 1 час",
-    "30m": "За 30 минут",
-    "15m": "За 15 минут",
-    "0m": "В момент события",
-}
-
-RELATIVE_LABELS = {
-    "1d": "Завтра",
-    "2h": "Через 2 часа",
-    "1h": "Через 1 час",
-    "30m": "Через 30 минут",
-    "15m": "Через 15 минут",
-    "0m": "Сейчас",
-}
 
 OFFSETS = {
     "1d": timedelta(days=1),
@@ -38,7 +21,7 @@ OFFSETS = {
     "0m": timedelta(),
 }
 
-VALID_KEYS = set(REMINDER_LABELS.keys())
+VALID_KEYS = {"1d", "2h", "1h", "30m", "15m", "0m"}
 
 
 async def create_reminders_for_event(
@@ -123,7 +106,7 @@ async def recreate_reminders_for_event(
 async def get_due_reminders(session: AsyncSession, limit: int = 50) -> list:
     """Запросить неотправленные напоминания с наступившим remind_at.
 
-    Возвращает список (reminder, event_title, event_date, event_time, space_name).
+    Возвращает список (reminder, event_title, event_date, event_time, space_name, user_language).
     """
     tz = ZoneInfo(settings.TIMEZONE)
     now = datetime.now(tz)
@@ -135,9 +118,11 @@ async def get_due_reminders(session: AsyncSession, limit: int = 50) -> list:
             Event.event_date,
             Event.event_time,
             Space.name.label("space_name"),
+            User.language.label("user_language"),
         )
         .join(Event, ScheduledReminder.event_id == Event.id)
         .join(Space, Event.space_id == Space.id)
+        .join(User, ScheduledReminder.user_id == User.id)
         .where(
             ScheduledReminder.sent.is_(False),
             ScheduledReminder.remind_at <= now,
@@ -163,32 +148,30 @@ def format_reminder_message(
     event_time: time | None,
     space_name: str,
     reminder_type: str,
+    lang: str = "ru",
 ) -> str:
     """Форматировать текст Telegram-сообщения напоминания."""
     from app.bot.formatting import format_date_short_with_weekday
 
-    relative = RELATIVE_LABELS.get(reminder_type, reminder_type)
-    lines = ["🔔 Напоминание!\n", f"📝 {event_title}"]
+    relative_labels = get_relative_labels(lang)
+    relative = relative_labels.get(reminder_type, reminder_type)
+    lines = [t(lang, "reminder.message.header"), f"📝 {event_title}"]
 
     if event_time is None:
-        # Событие без времени (только 1d): «Завтра, 5 апреля»
-        date_str = format_date_short_with_weekday(event_date)
+        date_str = format_date_short_with_weekday(event_date, lang)
         lines.append(f"📅 {relative}, {date_str}")
     elif reminder_type == "1d":
-        # За 1 день с временем: «Завтра в 19:00»
         time_str = event_time.strftime("%H:%M")
-        lines.append(f"⏰ {relative} в {time_str}")
-        lines.append(f"📅 {format_date_short_with_weekday(event_date)}")
+        lines.append(f"⏰ {relative} в {time_str}" if lang == "ru" else f"⏰ {relative} at {time_str}")
+        lines.append(f"📅 {format_date_short_with_weekday(event_date, lang)}")
     elif reminder_type == "0m":
-        # В момент события: «Сейчас (14:00)»
         time_str = event_time.strftime("%H:%M")
         lines.append(f"⏰ {relative} ({time_str})")
-        lines.append(f"📅 {format_date_short_with_weekday(event_date)}")
+        lines.append(f"📅 {format_date_short_with_weekday(event_date, lang)}")
     else:
-        # Обычное напоминание: «Через 15 минут (19:00)»
         time_str = event_time.strftime("%H:%M")
         lines.append(f"⏰ {relative} ({time_str})")
-        lines.append(f"📅 {format_date_short_with_weekday(event_date)}")
+        lines.append(f"📅 {format_date_short_with_weekday(event_date, lang)}")
 
-    lines.append(f"📍 Пространство: {space_name}")
+    lines.append(t(lang, "reminder.message.space", name=space_name))
     return "\n".join(lines)

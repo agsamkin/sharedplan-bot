@@ -12,6 +12,8 @@ import logging
 from datetime import date, time
 from uuid import UUID
 
+from typing import Callable
+
 from aiohttp import web
 from sqlalchemy import select
 
@@ -19,6 +21,7 @@ from app.bot.formatting import (
     format_date_short_with_weekday,
     format_event_deleted_notification,
     format_event_edited_notification,
+    format_notification,
 )
 from app.db.models import Event, Space, User, UserSpace
 from app.services import event_service, reminder_service
@@ -167,18 +170,12 @@ async def create_event(request: web.Request) -> web.Response:
     space = await session.get(Space, space_id)
     space_name = space.name if space else ""
 
-    notification_lines = [
-        f"📅 Новое событие в «{space_name}»!\n",
-        f"📝 {event.title}",
-        f"📅 {event.event_date}",
-    ]
-    if event.event_time:
-        notification_lines.append(f"⏰ {event.event_time.strftime('%H:%M')}")
-    notification_lines.append(f"👤 Добавил: {creator_name or 'Неизвестный'}")
-
-    await _notify_space_members(
+    await _notify_space_members_localized(
         request, session, space_id, user_id,
-        "\n".join(notification_lines),
+        lambda lang: format_notification(
+            space_name, event.title, event.event_date, event.event_time,
+            creator_name or "?", lang=lang,
+        ),
     )
 
     result = _serialize_event(event, creator_name=creator_name, is_owner=True)
@@ -316,21 +313,20 @@ async def update_event(request: web.Request) -> web.Response:
             changes.append(("Время", old_time_str, new_time_str))
 
         if changes:
-            # Получаем название пространства и имя редактора
             space = await session.get(Space, updated_event.space_id)
             space_name = space.name if space else ""
             editor = await session.get(User, user_id)
-            editor_name = editor.first_name if editor else "Неизвестный"
+            editor_name = editor.first_name if editor else "?"
 
-            notification_text = format_event_edited_notification(
-                space_name=space_name,
-                title=updated_event.title,
-                changes=changes,
-                editor_name=editor_name,
-            )
-            await _notify_space_members(
+            await _notify_space_members_localized(
                 request, session, updated_event.space_id, user_id,
-                notification_text,
+                lambda lang: format_event_edited_notification(
+                    space_name=space_name,
+                    title=updated_event.title,
+                    changes=changes,
+                    editor_name=editor_name,
+                    lang=lang,
+                ),
             )
 
     # Проверяем конфликты при изменении даты/времени
@@ -389,34 +385,36 @@ async def delete_event(request: web.Request) -> web.Response:
     editor_name = editor.first_name if editor else "Неизвестный"
 
     # Уведомляем участников ДО удаления
-    notification_text = format_event_deleted_notification(
-        space_name=space_name,
-        title=event.title,
-        editor_name=editor_name,
-        event_date=event.event_date,
-        event_time=event.event_time,
-    )
-    await _notify_space_members(
-        request,
-        session,
-        event.space_id,
-        user_id,
-        notification_text,
+    _event_title = event.title
+    _event_date = event.event_date
+    _event_time = event.event_time
+    _space_id = event.space_id
+    await _notify_space_members_localized(
+        request, session, _space_id, user_id,
+        lambda lang: format_event_deleted_notification(
+            space_name=space_name,
+            title=_event_title,
+            editor_name=editor_name,
+            event_date=_event_date,
+            event_time=_event_time,
+            lang=lang,
+        ),
     )
 
     await event_service.delete_event(session, event_id)
     return web.Response(status=204)
 
 
-async def _notify_space_members(
+async def _notify_space_members_localized(
     request: web.Request,
     session,
     space_id: UUID,
     exclude_user_id: int,
-    message: str,
+    message_factory: Callable[[str], str],
 ) -> None:
-    """Отправить уведомление всем участникам пространства, кроме указанного.
+    """Отправить локализованное уведомление всем участникам пространства.
 
+    message_factory принимает lang и возвращает текст на нужном языке.
     Ошибки при отправке отдельному участнику не прерывают процесс.
     """
     bot = request.app.get("bot")
@@ -424,18 +422,22 @@ async def _notify_space_members(
         logger.warning("Бот не доступен для отправки уведомлений")
         return
 
-    # Получаем участников пространства
-    stmt = select(UserSpace.user_id).where(UserSpace.space_id == space_id)
+    stmt = (
+        select(UserSpace.user_id, User.language)
+        .join(User, UserSpace.user_id == User.id)
+        .where(UserSpace.space_id == space_id)
+    )
     result = await session.execute(stmt)
-    member_ids = [row.user_id for row in result.all()]
+    members = result.all()
 
-    for member_id in member_ids:
-        if member_id == exclude_user_id:
+    for member in members:
+        if member.user_id == exclude_user_id:
             continue
         try:
-            await bot.send_message(member_id, message)
+            text = message_factory(member.language or "en")
+            await bot.send_message(member.user_id, text)
         except Exception as e:
             logger.warning(
                 "Не удалось отправить уведомление пользователю %d: %s",
-                member_id, e,
+                member.user_id, e,
             )

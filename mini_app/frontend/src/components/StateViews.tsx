@@ -1,8 +1,11 @@
+import { useTranslation } from '../i18n';
+
 interface LoadingViewProps {
   message?: string;
 }
 
-export function LoadingView({ message = 'Загрузка...' }: LoadingViewProps) {
+export function LoadingView({ message }: LoadingViewProps) {
+  const { t } = useTranslation();
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -14,7 +17,7 @@ export function LoadingView({ message = 'Загрузка...' }: LoadingViewProp
         animation: 'spin 0.8s linear infinite',
       }} />
       <span style={{ fontSize: 15, color: 'var(--text-secondary)' }}>
-        {message}
+        {message ?? t.loading}
       </span>
     </div>
   );
@@ -25,7 +28,8 @@ interface ErrorViewProps {
   onRetry?: () => void;
 }
 
-export function ErrorView({ message = 'Произошла ошибка', onRetry }: ErrorViewProps) {
+export function ErrorView({ message, onRetry }: ErrorViewProps) {
+  const { t } = useTranslation();
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -33,10 +37,10 @@ export function ErrorView({ message = 'Произошла ошибка', onRetry
       textAlign: 'center',
     }}>
       <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)' }}>
-        Ошибка
+        {t.errorTitle}
       </div>
       <div style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-        {message}
+        {message ?? t.errorDefault}
       </div>
       {onRetry && (
         <button onClick={onRetry} style={{
@@ -45,7 +49,7 @@ export function ErrorView({ message = 'Произошла ошибка', onRetry
           background: 'var(--bg-card)', color: 'var(--accent-blue)',
           fontSize: 15, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
         }}>
-          Повторить
+          {t.retry}
         </button>
       )}
     </div>
