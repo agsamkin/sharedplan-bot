@@ -355,23 +355,7 @@ export default function SharedPlanMiniApp() {
           </div>
         )}
 
-        <div style={{ display: "flex", alignItems: "center", padding: "20px 16px 8px" }}>
-          <span style={{
-            fontSize: 12, fontWeight: 600, color: "#8e8e93", textTransform: "uppercase",
-            letterSpacing: 0.8, flex: 1,
-          }}>События · {spaceEvents.length}</span>
-          <button onClick={() => {
-            setNewEvent({ title: "", date: "", time: "" });
-            navigate("eventCreate");
-          }} style={{
-            display: "flex", alignItems: "center", gap: 4, padding: "5px 12px",
-            borderRadius: 8, border: "none", background: "#378ADD14",
-            color: "#378ADD", fontSize: 13, fontWeight: 600, cursor: "pointer",
-          }}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.5V11.5M2.5 7H11.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> Добавить
-          </button>
-        </div>
-        <div style={{ background: "#fff", borderTop: "0.5px solid #e5e5e5", borderBottom: "0.5px solid #e5e5e5" }}>
+        <Section title={`События · ${spaceEvents.length}`}>
           {spaceEvents.length === 0 ? (
             <div style={{ padding: "32px 16px", textAlign: "center", color: "#8e8e93", fontSize: 14 }}>
               Нет предстоящих событий
@@ -404,7 +388,20 @@ export default function SharedPlanMiniApp() {
               />
             </div>
           ))}
-        </div>
+        </Section>
+
+        <button onClick={() => {
+          setNewEvent({ title: "", date: "", time: "" });
+          navigate("eventCreate");
+        }} style={{
+          position: "absolute", bottom: 24, right: 20,
+          width: 52, height: 52, borderRadius: 26,
+          background: "#378ADD", border: "none", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 4px 12px rgba(55,138,221,0.35)",
+        }}>
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 5V17M5 11H17" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/></svg>
+        </button>
       </div>
     );
   };

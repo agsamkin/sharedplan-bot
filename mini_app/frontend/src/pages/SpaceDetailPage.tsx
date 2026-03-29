@@ -107,7 +107,7 @@ export function SpaceDetailPage() {
   )
 
   return (
-    <div style={{ background: 'var(--bg-primary)', minHeight: '100%' }}>
+    <div style={{ background: 'var(--bg-primary)', minHeight: '100%', position: 'relative' }}>
       <Header title={space.name} showBack onBack={() => navigate(-1)} />
 
       <div style={{
@@ -154,23 +154,11 @@ export function SpaceDetailPage() {
 
       <div style={{ marginBottom: 8 }}>
         <div style={{
-          display: 'flex', alignItems: 'center', padding: '20px 16px 8px',
+          fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)',
+          textTransform: 'uppercase', letterSpacing: 0.8,
+          padding: '20px 16px 8px',
         }}>
-          <span style={{
-            fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)',
-            textTransform: 'uppercase', letterSpacing: 0.8, flex: 1,
-          }}>
-            События · {events.length}
-          </span>
-          <button onClick={() => navigate(`/spaces/${spaceId}/events/new`, { state: { events, spaceName: space.name } })} style={{
-            display: 'flex', alignItems: 'center', gap: 4, padding: '5px 12px',
-            borderRadius: 8, border: 'none', background: 'var(--accent-blue-light, #378ADD14)',
-            color: 'var(--accent-blue)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.5V11.5M2.5 7H11.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-            Добавить
-          </button>
+          События · {events.length}
         </div>
         <div style={{
           background: 'var(--bg-card)',
@@ -195,6 +183,16 @@ export function SpaceDetailPage() {
           )}
         </div>
       </div>
+
+      <button onClick={() => navigate(`/spaces/${spaceId}/events/new`, { state: { events, spaceName: space.name } })} style={{
+        position: 'fixed', bottom: 24, right: 20,
+        width: 52, height: 52, borderRadius: 26,
+        background: 'var(--accent-blue)', border: 'none', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 4px 12px rgba(55,138,221,0.35)',
+      }}>
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 5V17M5 11H17" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/></svg>
+      </button>
     </div>
   )
 }
