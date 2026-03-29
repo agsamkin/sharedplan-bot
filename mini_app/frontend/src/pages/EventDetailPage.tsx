@@ -18,6 +18,7 @@ export function EventDetailPage() {
   const [time, setTime] = useState<string | null>(null)
   const [author, setAuthor] = useState('')
   const [spaceId, setSpaceId] = useState<string | null>(null)
+  const [isOwner, setIsOwner] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -36,6 +37,7 @@ export function EventDetailPage() {
       setTime(event.event_time ? event.event_time.substring(0, 5) : null)
       setAuthor(event.creator_name)
       setSpaceId(event.space_id ?? null)
+      setIsOwner(!!event.is_owner)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить событие')
     } finally {
@@ -97,9 +99,13 @@ export function EventDetailPage() {
 
   const inputStyle = {
     width: '100%', padding: '11px 14px', fontSize: 16, borderRadius: 10,
-    border: '0.5px solid var(--border-input)', outline: 'none',
+    border: isOwner ? '0.5px solid var(--border-input)' : 'none',
+    outline: 'none',
     background: 'var(--bg-card)', color: 'var(--text-primary)',
     boxSizing: 'border-box' as const, fontFamily: 'inherit',
+    opacity: isOwner ? 1 : 0.8,
+    cursor: isOwner ? undefined : 'default',
+    pointerEvents: isOwner ? undefined : 'none' as const,
   }
 
   const labelStyle = {
@@ -109,7 +115,7 @@ export function EventDetailPage() {
 
   return (
     <div style={{ background: 'var(--bg-primary)', minHeight: '100%' }}>
-      <Header title="Событие" showBack onBack={() => navigate(-1)} />
+      <Header title={isOwner ? 'Редактирование' : 'Событие'} showBack onBack={() => navigate(-1)} />
 
       <Section title="Детали события">
         <div style={{ padding: '12px 16px' }}>
@@ -117,6 +123,7 @@ export function EventDetailPage() {
           <input
             value={title}
             onChange={e => setTitle(e.target.value)}
+            readOnly={!isOwner}
             style={inputStyle}
           />
         </div>
@@ -128,6 +135,7 @@ export function EventDetailPage() {
               type="date"
               value={date}
               onChange={e => setDate(e.target.value)}
+              readOnly={!isOwner}
               style={{ ...inputStyle, fontSize: 15 }}
             />
           </div>
@@ -137,6 +145,7 @@ export function EventDetailPage() {
               type="time"
               value={time || ''}
               onChange={e => setTime(e.target.value || null)}
+              readOnly={!isOwner}
               style={{ ...inputStyle, fontSize: 15 }}
               placeholder="\u2014"
             />
@@ -160,29 +169,33 @@ export function EventDetailPage() {
         </div>
       )}
 
-      <div style={{ padding: '12px 16px', display: 'flex', gap: 10 }}>
-        <button onClick={handleSave} disabled={saving || !title.trim() || !date} style={{
-          flex: 1, padding: '14px 0', borderRadius: 12, border: 'none',
-          background: 'var(--accent-blue)', color: '#fff', fontSize: 16,
-          fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-          opacity: saving || !title.trim() || !date ? 0.4 : 1,
-        }}>
-          {saving ? 'Сохранение...' : 'Сохранить'}
-        </button>
-      </div>
+      {isOwner && (
+        <div style={{ padding: '12px 16px', display: 'flex', gap: 10 }}>
+          <button onClick={handleSave} disabled={saving || !title.trim() || !date} style={{
+            flex: 1, padding: '14px 0', borderRadius: 12, border: 'none',
+            background: 'var(--accent-blue)', color: '#fff', fontSize: 16,
+            fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            opacity: saving || !title.trim() || !date ? 0.4 : 1,
+          }}>
+            {saving ? 'Сохранение...' : 'Сохранить'}
+          </button>
+        </div>
+      )}
 
-      <div style={{ padding: '0 16px' }}>
-        <button onClick={() => setConfirmDelete(true)} style={{
-          width: '100%', padding: '14px 0', borderRadius: 12,
-          border: '0.5px solid var(--danger-border)',
-          background: 'var(--confirm-bg)', color: 'var(--accent-red)',
-          fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-        }}>
-          Удалить событие
-        </button>
-      </div>
+      {isOwner && (
+        <div style={{ padding: '0 16px' }}>
+          <button onClick={() => setConfirmDelete(true)} style={{
+            width: '100%', padding: '14px 0', borderRadius: 12,
+            border: '0.5px solid var(--danger-border)',
+            background: 'var(--confirm-bg)', color: 'var(--accent-red)',
+            fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            Удалить событие
+          </button>
+        </div>
+      )}
 
-      {confirmDelete && (
+      {isOwner && confirmDelete && (
         <ConfirmInline
           message={`Удалить \u00ab${title}\u00bb? Напоминания тоже будут удалены.`}
           confirmText={deleting ? 'Удаление...' : 'Удалить'}
