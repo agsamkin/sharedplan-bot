@@ -48,12 +48,25 @@ async def list_events(request: web.Request) -> web.Response:
     except ValueError:
         return web.json_response({"error": "Невалидный space_id"}, status=400)
 
+    # Парсим limit из query (default=50, max=100, min=1)
+    try:
+        limit = int(request.query.get("limit", "50"))
+    except (ValueError, TypeError):
+        limit = 50
+    limit = max(1, min(limit, 100))
+
     # Проверяем членство
     membership = await session.get(UserSpace, (user_id, space_id))
     if membership is None:
         return web.json_response({"error": "Нет доступа к пространству"}, status=403)
 
-    events = await event_service.get_upcoming_events(session, space_id)
+    events = await event_service.get_upcoming_events(session, space_id, limit=limit)
+    total_count = await event_service.count_upcoming_events(session, space_id)
+
+    logger.info(
+        "list_events user_id=%d space_id=%s returned=%d total_count=%d",
+        user_id, space_id, len(events), total_count,
+    )
 
     # Собираем имена создателей
     creator_ids = {e.created_by for e in events}
@@ -72,7 +85,7 @@ async def list_events(request: web.Request) -> web.Response:
         for e in events
     ]
 
-    return web.json_response(result)
+    return web.json_response({"events": result, "total_count": total_count})
 
 
 @routes.post("/api/spaces/{space_id}/events")

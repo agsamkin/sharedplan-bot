@@ -20,6 +20,7 @@ export function SpaceDetailPage() {
 
   const [space, setSpace] = useState<SpaceDetail | null>(null)
   const [events, setEvents] = useState<SpaceEvent[]>([])
+  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -38,12 +39,13 @@ export function SpaceDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      const [spaceData, eventsData] = await Promise.all([
+      const [spaceData, eventsResponse] = await Promise.all([
         getSpace(spaceId),
         getSpaceEvents(spaceId),
       ])
       setSpace(spaceData)
-      setEvents(eventsData)
+      setEvents(eventsResponse.events)
+      setTotalCount(eventsResponse.total_count)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить данные')
     } finally {
@@ -158,7 +160,7 @@ export function SpaceDetailPage() {
           textTransform: 'uppercase', letterSpacing: 0.8,
           padding: '20px 16px 8px',
         }}>
-          События · {events.length}
+          События · {totalCount}
         </div>
         <div style={{
           background: 'var(--bg-card)',

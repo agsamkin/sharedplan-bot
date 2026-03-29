@@ -26,8 +26,13 @@ export interface EventCreateData {
   event_time: string | null
 }
 
-export function getSpaceEvents(spaceId: string): Promise<SpaceEvent[]> {
-  return get<SpaceEvent[]>(`/api/spaces/${spaceId}/events`)
+export interface SpaceEventsResponse {
+  events: SpaceEvent[]
+  total_count: number
+}
+
+export function getSpaceEvents(spaceId: string): Promise<SpaceEventsResponse> {
+  return get<SpaceEventsResponse>(`/api/spaces/${spaceId}/events`)
 }
 
 export function createSpaceEvent(spaceId: string, data: EventCreateData): Promise<SpaceEvent> {

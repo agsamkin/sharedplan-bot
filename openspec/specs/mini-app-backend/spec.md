@@ -60,7 +60,19 @@ REST API бэкенд для Telegram Mini App: aiohttp web server, автори
 
 #### Scenario: Получение списка событий пространства
 - **WHEN** `GET /api/spaces/:space_id/events` от участника пространства
-- **THEN** возвращается JSON-массив будущих событий, отсортированных по `event_date ASC, event_time ASC NULLS FIRST`, с полями: `id`, `title`, `event_date`, `event_time`, `created_by`, `creator_name`, `is_owner`
+- **THEN** возвращается JSON-объект `{ "events": [...], "total_count": N }`, где `events` — массив будущих событий (по умолчанию до 50, максимум 100), отсортированных по `event_date ASC, event_time ASC NULLS FIRST`, с полями: `id`, `title`, `event_date`, `event_time`, `created_by`, `creator_name`, `is_owner`; `total_count` — общее количество предстоящих событий в пространстве (без учёта лимита)
+
+#### Scenario: Получение списка событий с параметром limit
+- **WHEN** `GET /api/spaces/:space_id/events?limit=20` от участника пространства
+- **THEN** возвращается JSON-объект с массивом `events` длиной не более 20, `total_count` отражает полное количество предстоящих событий
+
+#### Scenario: Параметр limit превышает максимум
+- **WHEN** `GET /api/spaces/:space_id/events?limit=500` от участника пространства
+- **THEN** `limit` ограничивается значением 100, возвращается не более 100 событий
+
+#### Scenario: Диагностическое логирование запроса событий
+- **WHEN** любой запрос `GET /api/spaces/:space_id/events` обрабатывается
+- **THEN** в лог записывается: `user_id`, `space_id`, количество возвращённых событий, `total_count`
 
 #### Scenario: Получение списка событий чужого пространства
 - **WHEN** `GET /api/spaces/:space_id/events` от пользователя, не состоящего в пространстве

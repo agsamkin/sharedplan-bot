@@ -2,7 +2,7 @@ import logging
 from datetime import date, datetime, time, timedelta
 from uuid import UUID
 
-from sqlalchemy import and_, delete, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from zoneinfo import ZoneInfo
 
@@ -35,39 +35,52 @@ async def create_event(
     return event
 
 
+def _upcoming_events_filter(space_id: UUID):
+    """Общий фильтр для предстоящих событий пространства."""
+    tz = ZoneInfo(settings.TIMEZONE)
+    now = datetime.now(tz)
+    today = now.date()
+    current_time = now.time()
+
+    return [
+        Event.space_id == space_id,
+        or_(
+            Event.event_date > today,
+            and_(
+                Event.event_date == today,
+                or_(
+                    Event.event_time.is_(None),
+                    Event.event_time >= current_time,
+                ),
+            ),
+        ),
+    ]
+
+
 async def get_upcoming_events(
-    session: AsyncSession, space_id: UUID, limit: int = 10
+    session: AsyncSession, space_id: UUID, limit: int
 ) -> list[Event]:
     """Получить ближайшие будущие события пространства.
 
     Исключает события с прошедшим временем (для сегодняшних).
     Сортировка: event_date ASC, event_time ASC NULLS FIRST.
     """
-    tz = ZoneInfo(settings.TIMEZONE)
-    now = datetime.now(tz)
-    today = now.date()
-    current_time = now.time()
-
     stmt = (
         select(Event)
-        .where(
-            Event.space_id == space_id,
-            or_(
-                Event.event_date > today,
-                and_(
-                    Event.event_date == today,
-                    or_(
-                        Event.event_time.is_(None),
-                        Event.event_time >= current_time,
-                    ),
-                ),
-            ),
-        )
+        .where(*_upcoming_events_filter(space_id))
         .order_by(Event.event_date.asc(), Event.event_time.asc().nullsfirst())
         .limit(limit)
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def count_upcoming_events(session: AsyncSession, space_id: UUID) -> int:
+    """Подсчитать общее количество предстоящих событий пространства."""
+    stmt = select(func.count()).select_from(Event).where(
+        *_upcoming_events_filter(space_id)
+    )
+    return await session.scalar(stmt) or 0
 
 
 async def get_event_for_owner(
