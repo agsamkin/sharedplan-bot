@@ -169,6 +169,13 @@ MESSAGES_RU: dict[str, str] = {
     # ── reminders command ──
     "reminders.go_to_app": "Настрой напоминания в приложении:",
     "reminders.button": "⏰ Настройки напоминаний",
+
+    # ── recurrence labels ──
+    "recurrence.daily": "Каждый день",
+    "recurrence.weekly": "Каждую неделю",
+    "recurrence.biweekly": "Каждые 2 недели",
+    "recurrence.monthly": "Каждый месяц",
+    "recurrence.yearly": "Каждый год",
 }
 
 
@@ -324,6 +331,13 @@ MESSAGES_EN: dict[str, str] = {
     # ── reminders command ──
     "reminders.go_to_app": "Set up reminders in the app:",
     "reminders.button": "⏰ Reminder settings",
+
+    # ── recurrence labels ──
+    "recurrence.daily": "Every day",
+    "recurrence.weekly": "Every week",
+    "recurrence.biweekly": "Every 2 weeks",
+    "recurrence.monthly": "Every month",
+    "recurrence.yearly": "Every year",
 }
 
 
@@ -362,3 +376,10 @@ def get_relative_labels(lang: str) -> dict[str, str]:
         key: t(lang, f"reminder.relative.{key}")
         for key in ("1d", "2h", "1h", "30m", "15m", "0m")
     }
+
+
+def get_recurrence_label(lang: str, rule: str | None) -> str | None:
+    """Получить локализованную метку повторения."""
+    if rule is None:
+        return None
+    return t(lang, f"recurrence.{rule}")

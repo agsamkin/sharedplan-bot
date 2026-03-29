@@ -4,6 +4,7 @@ import { createSpaceEvent, type SpaceEvent } from '../api/events'
 import { Header } from '../components/Header'
 import { Section } from '../components/Section'
 import { useToast } from '../components/Toast'
+import { RepeatPicker } from '../components/RepeatPicker'
 import { useTranslation } from '../i18n'
 
 export function EventCreatePage() {
@@ -22,6 +23,7 @@ export function EventCreatePage() {
   const [time, setTime] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [repeat, setRepeat] = useState('none')
 
   const titleTrimmed = title.trim()
   const isTitleTooLong = titleTrimmed.length > 500
@@ -62,6 +64,7 @@ export function EventCreatePage() {
         title: titleTrimmed,
         event_date: date,
         event_time: time,
+        recurrence_rule: repeat === 'none' ? null : repeat,
       })
       showToast(t.eventCreated)
       navigate(-1)
@@ -72,7 +75,7 @@ export function EventCreatePage() {
     } finally {
       setSaving(false)
     }
-  }, [spaceId, canSave, titleTrimmed, date, time, navigate, showToast])
+  }, [spaceId, canSave, titleTrimmed, date, time, repeat, navigate, showToast])
 
   const inputStyle = {
     width: '100%', padding: '11px 14px', fontSize: 16, borderRadius: 10,
@@ -134,6 +137,7 @@ export function EventCreatePage() {
             />
           </div>
         </div>
+        <RepeatPicker value={repeat} onChange={setRepeat} />
       </Section>
 
       {conflicts.length > 0 && (

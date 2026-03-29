@@ -86,3 +86,14 @@ export const IconGlobe = () => (
     <path d="M2.5 6.5h13M2.5 11.5h13" stroke="currentColor" strokeWidth="1.1"/>
   </svg>
 );
+
+export function IconRepeat() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M11.5 1.5L14 4l-2.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M2 7.5V7a3 3 0 013-3h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M4.5 14.5L2 12l2.5-2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M14 8.5V9a3 3 0 01-3 3H2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  )
+}

@@ -42,6 +42,8 @@ def _serialize_event(event: Event, creator_name: str | None = None, is_owner: bo
         "creator_name": creator_name,
         "is_owner": is_owner,
         "created_at": event.created_at.isoformat() if event.created_at else None,
+        "recurrence_rule": event.recurrence_rule,
+        "parent_event_id": str(event.parent_event_id) if event.parent_event_id else None,
     }
 
 
@@ -149,6 +151,13 @@ async def create_event(request: web.Request) -> web.Response:
         except (ValueError, TypeError, IndexError, AttributeError):
             return web.json_response({"error": "Невалидный формат времени (ожидается HH:MM)"}, status=400)
 
+    # Валидация recurrence_rule (опционально)
+    recurrence_rule = body.get("recurrence_rule")
+    if recurrence_rule is not None:
+        valid_rules = {"daily", "weekly", "biweekly", "monthly", "yearly"}
+        if recurrence_rule not in valid_rules:
+            return web.json_response({"error": "Невалидное значение recurrence_rule"}, status=400)
+
     # Создаём событие
     event = await event_service.create_event(
         session,
@@ -158,10 +167,16 @@ async def create_event(request: web.Request) -> web.Response:
         event_time=event_time,
         created_by=user_id,
         raw_input=None,
+        recurrence_rule=recurrence_rule,
     )
 
     # Создаём напоминания для участников
     await reminder_service.create_reminders_for_event(session, event, space_id)
+
+    # Генерация вхождений для повторяющихся событий
+    if event.recurrence_rule:
+        from app.services import recurrence_service
+        await recurrence_service.generate_occurrences(session, event)
 
     # Уведомляем участников
     creator = await session.get(User, user_id)
@@ -174,7 +189,7 @@ async def create_event(request: web.Request) -> web.Response:
         request, session, space_id, user_id,
         lambda lang: format_notification(
             space_name, event.title, event.event_date, event.event_time,
-            creator_name or "?", lang=lang,
+            creator_name or "?", recurrence_rule=event.recurrence_rule, lang=lang,
         ),
     )
 
@@ -277,6 +292,16 @@ async def update_event(request: web.Request) -> web.Response:
             except (ValueError, TypeError, IndexError, AttributeError):
                 return web.json_response({"error": "Невалидный формат event_time (ожидается HH:MM)"}, status=400)
 
+    recurrence_changed = False
+    if "recurrence_rule" in body:
+        new_rule = body["recurrence_rule"]
+        if new_rule is not None:
+            valid_rules = {"daily", "weekly", "biweekly", "monthly", "yearly"}
+            if new_rule not in valid_rules:
+                return web.json_response({"error": "Невалидное значение recurrence_rule"}, status=400)
+        update_fields["recurrence_rule"] = new_rule
+        recurrence_changed = True
+
     if not update_fields:
         return web.json_response({"error": "Нет полей для обновления"}, status=400)
 
@@ -291,6 +316,16 @@ async def update_event(request: web.Request) -> web.Response:
     # Пересоздаём напоминания, если изменилась дата/время
     if date_time_changed and updated_event:
         await reminder_service.recreate_reminders_for_event(session, updated_event, updated_event.space_id)
+
+    # Обработка изменения recurrence_rule
+    if recurrence_changed and updated_event:
+        from app.services import recurrence_service
+        await recurrence_service.regenerate_occurrences(session, updated_event)
+    elif updated_event and updated_event.recurrence_rule:
+        # Если изменился title/time — обновить дочерние вхождения
+        if "title" in update_fields or date_time_changed:
+            from app.services import recurrence_service
+            await recurrence_service.update_future_occurrences(session, updated_event)
 
     # Уведомляем участников пространства с детальным описанием изменений
     if updated_event:

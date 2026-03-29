@@ -107,12 +107,18 @@ class Event(Base):
         BigInteger, ForeignKey("users.id"), nullable=False
     )
     raw_input: Mapped[str | None] = mapped_column(Text)
+    recurrence_rule: Mapped[str | None] = mapped_column(String(20))
+    parent_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("events.id", ondelete="CASCADE"),
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
     __table_args__ = (
         Index("idx_events_space_date", "space_id", "event_date"),
+        Index("idx_events_parent", "parent_event_id"),
     )
 
 

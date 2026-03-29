@@ -7,6 +7,8 @@ export interface SpaceEvent {
   event_time: string | null
   created_by: number
   creator_name: string
+  recurrence_rule: string | null
+  parent_event_id: string | null
   is_owner: boolean
   space_id?: string
   space_name?: string
@@ -18,12 +20,14 @@ export interface EventUpdateData {
   title: string
   event_date: string
   event_time: string | null
+  recurrence_rule?: string | null
 }
 
 export interface EventCreateData {
   title: string
   event_date: string
   event_time: string | null
+  recurrence_rule?: string | null
 }
 
 export interface SpaceEventsResponse {

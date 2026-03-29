@@ -20,6 +20,7 @@ async def create_event(
     event_time: time | None,
     created_by: int,
     raw_input: str | None = None,
+    recurrence_rule: str | None = None,
 ) -> Event:
     """Создать событие в пространстве."""
     event = Event(
@@ -29,6 +30,7 @@ async def create_event(
         event_time=event_time,
         created_by=created_by,
         raw_input=raw_input,
+        recurrence_rule=recurrence_rule,
     )
     session.add(event)
     await session.flush()
@@ -44,6 +46,7 @@ def _upcoming_events_filter(space_id: UUID):
 
     return [
         Event.space_id == space_id,
+        Event.parent_event_id.is_(None),
         or_(
             Event.event_date > today,
             and_(
@@ -57,6 +60,39 @@ def _upcoming_events_filter(space_id: UUID):
     ]
 
 
+async def _advance_stale_recurring_parents(
+    session: AsyncSession, space_id: UUID,
+) -> None:
+    """Прокрутить даты повторяющихся событий, у которых event_date в прошлом.
+
+    Подстраховка на чтении — между запусками планировщика событие
+    может «протухнуть». Вызывается перед фильтрацией списка.
+    """
+    from app.services.recurrence_service import advance_parent_date
+
+    tz = ZoneInfo(settings.TIMEZONE)
+    now = datetime.now(tz)
+    today = now.date()
+    current_time = now.time()
+
+    stmt = select(Event).where(
+        Event.space_id == space_id,
+        Event.recurrence_rule.isnot(None),
+        Event.parent_event_id.is_(None),
+        or_(
+            Event.event_date < today,
+            and_(
+                Event.event_date == today,
+                Event.event_time.isnot(None),
+                Event.event_time < current_time,
+            ),
+        ),
+    )
+    result = await session.execute(stmt)
+    for event in result.scalars().all():
+        await advance_parent_date(session, event)
+
+
 async def get_upcoming_events(
     session: AsyncSession, space_id: UUID, limit: int
 ) -> list[Event]:
@@ -65,6 +101,7 @@ async def get_upcoming_events(
     Исключает события с прошедшим временем (для сегодняшних).
     Сортировка: event_date ASC, event_time ASC NULLS FIRST.
     """
+    await _advance_stale_recurring_parents(session, space_id)
     stmt = (
         select(Event)
         .where(*_upcoming_events_filter(space_id))
@@ -77,6 +114,7 @@ async def get_upcoming_events(
 
 async def count_upcoming_events(session: AsyncSession, space_id: UUID) -> int:
     """Подсчитать общее количество предстоящих событий пространства."""
+    await _advance_stale_recurring_parents(session, space_id)
     stmt = select(func.count()).select_from(Event).where(
         *_upcoming_events_filter(space_id)
     )

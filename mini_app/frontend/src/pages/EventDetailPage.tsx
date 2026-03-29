@@ -5,6 +5,7 @@ import { Header } from '../components/Header'
 import { Section } from '../components/Section'
 import { ConfirmInline } from '../components/ConfirmInline'
 import { LoadingView, ErrorView } from '../components/StateViews'
+import { RepeatPicker } from '../components/RepeatPicker'
 import { useToast } from '../components/Toast'
 import { IconPerson } from '../components/icons'
 import { useTranslation } from '../i18n'
@@ -21,6 +22,7 @@ export function EventDetailPage() {
   const [author, setAuthor] = useState('')
   const [spaceId, setSpaceId] = useState<string | null>(null)
   const [isOwner, setIsOwner] = useState(false)
+  const [recurrenceRule, setRecurrenceRule] = useState<string>('none')
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -40,6 +42,7 @@ export function EventDetailPage() {
       setAuthor(event.creator_name)
       setSpaceId(event.space_id ?? null)
       setIsOwner(!!event.is_owner)
+      setRecurrenceRule(event.recurrence_rule || 'none')
     } catch (err) {
       setError(err instanceof Error ? err.message : t.loadEventError)
     } finally {
@@ -60,6 +63,7 @@ export function EventDetailPage() {
         title: title.trim(),
         event_date: date,
         event_time: time || null,
+        recurrence_rule: recurrenceRule === 'none' ? null : recurrenceRule,
       })
       showToast(t.eventUpdated)
       navigate(-1)
@@ -68,7 +72,7 @@ export function EventDetailPage() {
     } finally {
       setSaving(false)
     }
-  }, [eventId, title, date, time, navigate, showToast])
+  }, [eventId, title, date, time, recurrenceRule, navigate, showToast])
 
   const handleDelete = useCallback(async () => {
     if (!eventId) return
@@ -153,6 +157,7 @@ export function EventDetailPage() {
             />
           </div>
         </div>
+        <RepeatPicker value={recurrenceRule} onChange={setRecurrenceRule} readOnly={!isOwner} />
       </Section>
 
       <Section>
@@ -199,7 +204,7 @@ export function EventDetailPage() {
 
       {isOwner && confirmDelete && (
         <ConfirmInline
-          message={t.deleteEventConfirm.replace('{title}', title)}
+          message={(recurrenceRule && recurrenceRule !== 'none' ? t.deleteRecurringEventConfirm : t.deleteEventConfirm).replace('{title}', title)}
           confirmText={deleting ? t.deleting : t.deleteBtn}
           cancelText={t.cancelBtn}
           disabled={deleting}

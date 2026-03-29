@@ -13,7 +13,7 @@ PROMPT_HEADER = """\
 КРИТИЧЕСКИ ВАЖНО: Все относительные даты (завтра, в понедельник, через 3 дня) вычисляй ТОЛЬКО от указанной выше даты «Сегодня». Примеры ниже приведены для этой же даты.
 
 Верни ТОЛЬКО валидный JSON в формате:
-{{"title": "название события", "date": "YYYY-MM-DD", "time": "HH:MM"}}
+{{"title": "название события", "date": "YYYY-MM-DD", "time": "HH:MM", "recurrence_rule": "weekly"}}
 
 Правила:
 - "date" — всегда в формате YYYY-MM-DD
@@ -26,6 +26,7 @@ PROMPT_HEADER = """\
 - ВАЖНО: Если после предлога «в» стоит конструкция «ЧЧ-ММ» (где ММ < 60), это время с минутами, а НЕ диапазон. Например: «в 14-15» = 14:15, «в 9-30» = 09:30, «в 10-45» = 10:45
 - Временной интервал (диапазон) определяется ТОЛЬКО при формате «HH:MM - HH:MM» (с двоеточием) или конструкции «с X до Y» / «от X до Y». В этом случае в "time" поставь время начала, а интервал сохрани в названии (например, «08:00–09:30 Событие»)
 - Не добавляй информацию, которой нет в тексте
+- Повторение: «каждый день» / «ежедневно» = "daily", «каждую неделю» / «еженедельно» / «каждый понедельник/вторник/...» = "weekly", «каждые две недели» / «раз в две недели» = "biweekly", «каждый месяц» / «ежемесячно» / «раз в месяц» = "monthly", «каждый год» / «ежегодно» / «раз в год» = "yearly". Если повторение не упомянуто — "recurrence_rule": null
 - Отвечай ТОЛЬКО JSON, без пояснений\
 """
 
@@ -81,33 +82,39 @@ def build_examples(current_date: date, current_time: time | None = None) -> str:
     abs_date_near = current_date + timedelta(days=10)
     abs_date_far = current_date + timedelta(days=20)
 
-    # Декларативный список: (текст_ввода, заголовок, дата, время)
-    examples: list[tuple[str, str, date, str | None]] = [
-        ("Ужин с родителями завтра в 19:00", "Ужин с родителями", tomorrow, "19:00"),
-        ("Тренировка в понедельник в 8 утра", "Тренировка", next_monday, "08:00"),
-        ("День рождения Ани 5 апреля", "День рождения Ани", apr5, None),
-        ("Стоматолог послезавтра после обеда, ул. Ленина 5", "Стоматолог, ул. Ленина 5", day_after_tomorrow, "14:00"),
-        (f'{abs_date_near.strftime("%d.%m")} 13:10 Хирург 15 каб', "Хирург, 15 каб.", abs_date_near, "13:10"),
-        (f'{abs_date_far.strftime("%d.%m")} 08:00 - 09:30 Анализ мочи и крови', "08:00–09:30 Анализ мочи и крови", abs_date_far, "08:00"),
-        ("Созвон с Петей на следующей неделе в среду вечером", "Созвон с Петей", next_week_wed, "19:00"),
-        ("Завтра обед в 14-15 с Леной", "Обед с Леной", tomorrow, "14:15"),
-        ("Встреча с 14 до 15 завтра", "14:00–15:00 Встреча", tomorrow, "14:00"),
-        ("Сходить к врачу завтра утром", "Визит к врачу", tomorrow, "09:00"),
-        ("Новый год", "Новый год", new_year, None),
-        ("Сегодня вечером ужин", "Ужин", current_date, "19:00"),
+    # Декларативный список: (текст_ввода, заголовок, дата, время, recurrence_rule)
+    examples: list[tuple[str, str, date, str | None, str | None]] = [
+        ("Ужин с родителями завтра в 19:00", "Ужин с родителями", tomorrow, "19:00", None),
+        ("Тренировка в понедельник в 8 утра", "Тренировка", next_monday, "08:00", None),
+        ("День рождения Ани 5 апреля", "День рождения Ани", apr5, None, None),
+        ("Стоматолог послезавтра после обеда, ул. Ленина 5", "Стоматолог, ул. Ленина 5", day_after_tomorrow, "14:00", None),
+        (f'{abs_date_near.strftime("%d.%m")} 13:10 Хирург 15 каб', "Хирург, 15 каб.", abs_date_near, "13:10", None),
+        (f'{abs_date_far.strftime("%d.%m")} 08:00 - 09:30 Анализ мочи и крови', "08:00–09:30 Анализ мочи и крови", abs_date_far, "08:00", None),
+        ("Созвон с Петей на следующей неделе в среду вечером", "Созвон с Петей", next_week_wed, "19:00", None),
+        ("Завтра обед в 14-15 с Леной", "Обед с Леной", tomorrow, "14:15", None),
+        ("Встреча с 14 до 15 завтра", "14:00–15:00 Встреча", tomorrow, "14:00", None),
+        ("Сходить к врачу завтра утром", "Визит к врачу", tomorrow, "09:00", None),
+        ("Новый год", "Новый год", new_year, None, None),
+        ("Сегодня вечером ужин", "Ужин", current_date, "19:00", None),
+        ("Встреча каждую неделю в среду в 15:00", "Встреча", next_week_wed, "15:00", "weekly"),
+        ("День рождения мамы 5 апреля каждый год", "День рождения мамы", apr5, None, "yearly"),
+        ("Ежедневная планёрка в 10:00", "Планёрка", tomorrow, "10:00", "daily"),
+        ("Оплата аренды каждый месяц 15 числа", "Оплата аренды", _future_month_day(current_date, current_date.month, 15) if current_date.day >= 15 else current_date.replace(day=15), None, "monthly"),
+        ("Ретро раз в две недели в пятницу в 16:00", "Ретро", next_weekday(current_date, 4), "16:00", "biweekly"),
     ]
 
     if current_time:
         new_time, extra_days = _add_hours(current_time, 2)
         target_date = current_date + timedelta(days=extra_days)
-        examples.append(("Через 2 часа встреча", "Встреча", target_date, new_time.strftime("%H:%M")))
+        examples.append(("Через 2 часа встреча", "Встреча", target_date, new_time.strftime("%H:%M"), None))
 
     lines = [f"Примеры (при дате {current_date}, {weekday}):"]
-    for input_text, title, ex_date, ex_time in examples:
+    for input_text, title, ex_date, ex_time, ex_rule in examples:
         time_json = f'"{ex_time}"' if ex_time else "null"
+        rule_json = f'"{ex_rule}"' if ex_rule else "null"
         lines.append(
             f'Текст: «{input_text}»\n'
-            f'{{"title": "{title}", "date": "{ex_date}", "time": {time_json}}}'
+            f'{{"title": "{title}", "date": "{ex_date}", "time": {time_json}, "recurrence_rule": {rule_json}}}'
         )
 
     return "\n\n".join(lines)

@@ -54,9 +54,15 @@ async def on_event_confirm(
         event_time=event_time,
         created_by=callback.from_user.id,
         raw_input=data.get("raw_input"),
+        recurrence_rule=data.get("recurrence_rule"),
     )
 
     await reminder_service.create_reminders_for_event(session, event, space_id)
+
+    # Генерация вхождений для повторяющихся событий
+    if event.recurrence_rule:
+        from app.services import recurrence_service
+        await recurrence_service.generate_occurrences(session, event)
 
     await callback.message.edit_text(t(lang, "cb.confirm.published"))
     await state.clear()
@@ -69,6 +75,7 @@ async def on_event_confirm(
 
     notification = format_notification(
         space_name, data["parsed_title"], event_date, event_time, creator_name,
+        recurrence_rule=event.recurrence_rule,
         lang=lang,
     )
 
@@ -131,6 +138,7 @@ async def handle_event_edit(
         parsed_time=parsed.event_time.strftime("%H:%M") if parsed.event_time else None,
         raw_input=message.text,
         transcript=None,
+        recurrence_rule=parsed.recurrence_rule,
     )
 
     conflict_warning = None
@@ -146,7 +154,9 @@ async def handle_event_edit(
     await message.answer(
         format_confirmation(
             parsed.title, parsed.event_date, parsed.event_time,
-            conflict_warning=conflict_warning, lang=lang,
+            conflict_warning=conflict_warning,
+            recurrence_rule=parsed.recurrence_rule,
+            lang=lang,
         ),
         reply_markup=event_confirm_keyboard(lang),
     )
@@ -182,6 +192,7 @@ async def on_event_past_confirm(
         format_confirmation(
             data["parsed_title"], event_date, event_time,
             transcript=transcript, conflict_warning=conflict_warning,
+            recurrence_rule=data.get("recurrence_rule"),
             lang=lang,
         ),
         reply_markup=event_confirm_keyboard(lang),

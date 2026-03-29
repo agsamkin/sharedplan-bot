@@ -71,6 +71,7 @@ async def _show_confirmation_or_past_warning(
             format_confirmation(
                 parsed.title, parsed.event_date, parsed.event_time,
                 transcript=transcript, conflict_warning=conflict_warning,
+                recurrence_rule=parsed.recurrence_rule,
                 lang=lang,
             ),
             reply_markup=event_confirm_keyboard(lang),
@@ -100,6 +101,7 @@ async def process_parsed_event(
         parsed_time=parsed.event_time.strftime("%H:%M") if parsed.event_time else None,
         raw_input=raw_input,
         transcript=transcript,
+        recurrence_rule=parsed.recurrence_rule,
         lang=lang,
     )
 

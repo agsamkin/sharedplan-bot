@@ -21,7 +21,7 @@ from app.config import settings
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.db.engine import async_session
-from app.scheduler.jobs import process_due_reminders
+from app.scheduler.jobs import process_due_reminders, generate_recurring_occurrences
 from mini_app.backend.app import create_web_app
 
 logging.basicConfig(
@@ -79,6 +79,12 @@ async def main() -> None:
         "interval",
         seconds=settings.REMINDER_CHECK_INTERVAL_SECONDS,
         kwargs={"bot": bot, "session_factory": async_session},
+    )
+    scheduler.add_job(
+        generate_recurring_occurrences,
+        "interval",
+        hours=24,
+        kwargs={"session_factory": async_session},
     )
     scheduler.start()
     logger.info("APScheduler запущен (интервал %ds)", settings.REMINDER_CHECK_INTERVAL_SECONDS)

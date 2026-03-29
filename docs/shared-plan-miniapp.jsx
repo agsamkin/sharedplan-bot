@@ -37,6 +37,8 @@ const I18N = {
     months: ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"],
     reminderLabels: { "1d": "За 1 день", "2h": "За 2 часа", "1h": "За 1 час", "30m": "За 30 минут", "15m": "За 15 минут", "0m": "В момент события" },
     langName: "Русский", interfaceLang: "Язык интерфейса",
+    repeat: "Повтор",
+    repeatOptions: { none: "Не повторять", daily: "Каждый день", weekly: "Каждую неделю", biweekly: "Каждые 2 недели", monthly: "Каждый месяц", yearly: "Каждый год" },
   },
   en: {
     spaces: "Spaces", newSpace: "New space", edit: "Edit",
@@ -74,6 +76,8 @@ const I18N = {
     months: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
     reminderLabels: { "1d": "1 day before", "2h": "2 hours before", "1h": "1 hour before", "30m": "30 min before", "15m": "15 min before", "0m": "At the time of event" },
     langName: "English", interfaceLang: "Interface language",
+    repeat: "Repeat",
+    repeatOptions: { none: "Never", daily: "Every day", weekly: "Every week", biweekly: "Every 2 weeks", monthly: "Every month", yearly: "Every year" },
   },
 };
 
@@ -98,19 +102,19 @@ const MOCK = {
   },
   events: {
     1: [
-      { id: 1, title: "Ужин с родителями", date: "2026-03-29", time: "19:00", author: "Иван", spaceId: 1 },
-      { id: 2, title: "День рождения Ани", date: "2026-04-05", time: null, author: "Мария", spaceId: 1 },
-      { id: 3, title: "Стоматолог", date: "2026-04-10", time: "14:30", author: "Иван", spaceId: 1 },
-      { id: 4, title: "Родительское собрание", date: "2026-04-15", time: "18:00", author: "Мария", spaceId: 1 },
-      { id: 5, title: "Поездка на дачу", date: "2026-04-20", time: null, author: "Алексей", spaceId: 1 },
+      { id: 1, title: "Ужин с родителями", date: "2026-03-29", time: "19:00", author: "Иван", spaceId: 1, repeat: null },
+      { id: 2, title: "День рождения Ани", date: "2026-04-05", time: null, author: "Мария", spaceId: 1, repeat: "yearly" },
+      { id: 3, title: "Стоматолог", date: "2026-04-10", time: "14:30", author: "Иван", spaceId: 1, repeat: null },
+      { id: 4, title: "Родительское собрание", date: "2026-04-15", time: "18:00", author: "Мария", spaceId: 1, repeat: "monthly" },
+      { id: 5, title: "Поездка на дачу", date: "2026-04-20", time: null, author: "Алексей", spaceId: 1, repeat: null },
     ],
     2: [
-      { id: 6, title: "Ревью спринта", date: "2026-03-31", time: "11:00", author: "Дмитрий", spaceId: 2 },
-      { id: 7, title: "Дизайн-критика", date: "2026-04-02", time: "15:00", author: "Ольга", spaceId: 2 },
-      { id: 8, title: "Ретро Q1", date: "2026-04-04", time: "16:00", author: "Дмитрий", spaceId: 2 },
+      { id: 6, title: "Ревью спринта", date: "2026-03-31", time: "11:00", author: "Дмитрий", spaceId: 2, repeat: "biweekly" },
+      { id: 7, title: "Дизайн-критика", date: "2026-04-02", time: "15:00", author: "Ольга", spaceId: 2, repeat: "weekly" },
+      { id: 8, title: "Ретро Q1", date: "2026-04-04", time: "16:00", author: "Дмитрий", spaceId: 2, repeat: null },
     ],
     3: [
-      { id: 9, title: "Матч с «Динамо»", date: "2026-04-03", time: "20:00", author: "Саша", spaceId: 3 },
+      { id: 9, title: "Матч с «Динамо»", date: "2026-04-03", time: "20:00", author: "Саша", spaceId: 3, repeat: "weekly" },
     ],
   },
   reminders: { "1d": true, "2h": true, "1h": false, "30m": false, "15m": true, "0m": false },
@@ -130,6 +134,7 @@ const IconBack = () => (<svg width="10" height="16" viewBox="0 0 10 16" fill="no
 const IconPerson = () => (<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="4.5" r="2.5" stroke="currentColor" strokeWidth="1.1"/><path d="M2.5 13c0-2.49 2.01-4.5 4.5-4.5s4.5 2.01 4.5 4.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>);
 const IconPlus = () => (<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4V16M4 10H16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>);
 const IconGlobe = () => (<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.2"/><ellipse cx="9" cy="9" rx="3.5" ry="7" stroke="currentColor" strokeWidth="1.1"/><path d="M2.5 6.5h13M2.5 11.5h13" stroke="currentColor" strokeWidth="1.1"/></svg>);
+const IconRepeat = () => (<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M11.5 1.5L14 4l-2.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 7.5V7a3 3 0 013-3h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M4.5 14.5L2 12l2.5-2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M14 8.5V9a3 3 0 01-3 3H2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>);
 
 export default function SharedPlanMiniApp() {
   const [screen, setScreen] = useState("spaces");
@@ -144,7 +149,7 @@ export default function SharedPlanMiniApp() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [toast, setToast] = useState(null);
   const [newSpaceName, setNewSpaceName] = useState("");
-  const [newEvent, setNewEvent] = useState({ title: "", date: "", time: "" });
+  const [newEvent, setNewEvent] = useState({ title: "", date: "", time: "", repeat: "none" });
   const [lang, setLang] = useState("ru");
 
   const t = I18N[lang];
@@ -239,6 +244,49 @@ export default function SharedPlanMiniApp() {
     <div style={{ width: 42, height: 42, borderRadius: 12, background: bg, display: "flex", alignItems: "center", justifyContent: "center", color }}>{children}</div>
   );
 
+  const RepeatPicker = ({ value, onChange }) => {
+    const [open, setOpen] = useState(false);
+    const opts = Object.entries(t.repeatOptions);
+    const current = t.repeatOptions[value] || t.repeatOptions.none;
+    return (
+      <div>
+        <div style={{ height: 0.5, background: "#e5e5e5", marginLeft: 16 }} />
+        <button onClick={() => setOpen(!open)} style={{
+          display: "flex", alignItems: "center", width: "100%", padding: "13px 16px",
+          background: "none", border: "none", cursor: "pointer", textAlign: "left", fontSize: 15, gap: 10,
+        }}>
+          <div style={{ color: value && value !== "none" ? "#7F77DD" : "#8e8e93" }}><IconRepeat /></div>
+          <span style={{ flex: 1, color: "#1a1a1a" }}>{t.repeat}</span>
+          <span style={{ fontSize: 14, color: value && value !== "none" ? "#7F77DD" : "#8e8e93", fontWeight: value && value !== "none" ? 500 : 400 }}>{current}</span>
+          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", marginLeft: 2 }}>
+            <path d="M1 1l4 4 4-4" stroke="#999" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        {open && (
+          <div style={{ borderTop: "0.5px solid #e5e5e5" }}>
+            {opts.map(([key, label], i) => (
+              <div key={key}>
+                {i > 0 && <div style={{ height: 0.5, background: "#e5e5e5", marginLeft: 44 }} />}
+                <button onClick={() => { onChange(key); setOpen(false); }} style={{
+                  display: "flex", alignItems: "center", width: "100%", padding: "11px 16px 11px 44px",
+                  background: key === value || (key === "none" && !value) ? "#f2f2f7" : "none",
+                  border: "none", cursor: "pointer", textAlign: "left", fontSize: 14,
+                }}>
+                  <span style={{ flex: 1, fontWeight: key === value || (key === "none" && !value) ? 600 : 400 }}>{label}</span>
+                  {(key === value || (key === "none" && !value)) && (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M3 8.5l3 3L13 4" stroke="#378ADD" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ─── Screens ───
 
   const renderSpaces = () => (
@@ -298,7 +346,7 @@ export default function SharedPlanMiniApp() {
                   <span style={{ fontSize: 10, color: "#8e8e93", textTransform: "uppercase", fontWeight: 500 }}>{t.months[new Date(ev.date + "T00:00:00").getMonth()]}</span>
                 </div>}
                 title={ev.title}
-                subtitle={`${formatRelativeDate(ev.date)}${ev.time ? ` · ${ev.time}` : ""} · ${ev.author}`}
+                subtitle={`${formatRelativeDate(ev.date)}${ev.time ? ` · ${ev.time}` : ""}${ev.repeat ? ` · ${t.repeatOptions[ev.repeat]}` : ""} · ${ev.author}`}
                 right={<ChevronRight />}
                 onClick={() => { setEditingEvent({ ...ev }); navigate("eventDetail", { event: ev }); }}
               />
@@ -306,7 +354,7 @@ export default function SharedPlanMiniApp() {
           ))}
         </Section>
 
-        <button onClick={() => { setNewEvent({ title: "", date: "", time: "" }); navigate("eventCreate"); }}
+        <button onClick={() => { setNewEvent({ title: "", date: "", time: "", repeat: "none" }); navigate("eventCreate"); }}
           style={{ position: "absolute", bottom: 24, right: 20, width: 52, height: 52, borderRadius: 26, background: "#378ADD", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(55,138,221,0.35)" }}>
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 5V17M5 11H17" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/></svg>
         </button>
@@ -393,6 +441,7 @@ export default function SharedPlanMiniApp() {
                 style={{ width: "100%", padding: "11px 14px", fontSize: 15, borderRadius: 10, border: "0.5px solid #d1d1d6", outline: "none", background: "#fff", boxSizing: "border-box" }} />
             </div>
           </div>
+          <RepeatPicker value={ev.repeat || "none"} onChange={(v) => setEditingEvent({ ...ev, repeat: v === "none" ? null : v })} />
         </Section>
         <Section>
           <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, color: "#8e8e93" }}>
@@ -509,10 +558,11 @@ export default function SharedPlanMiniApp() {
                 style={{ width: "100%", padding: "11px 14px", fontSize: 15, borderRadius: 10, border: "0.5px solid #d1d1d6", outline: "none", background: "#fff", boxSizing: "border-box" }} />
             </div>
           </div>
+          <RepeatPicker value={newEvent.repeat} onChange={(v) => setNewEvent(ev => ({ ...ev, repeat: v }))} />
         </Section>
         <div style={{ padding: "12px 16px" }}>
           <button onClick={() => {
-            const ev = { id: Date.now(), title: newEvent.title.trim(), date: newEvent.date, time: newEvent.time || null, author: "Иван", spaceId: space.id };
+            const ev = { id: Date.now(), title: newEvent.title.trim(), date: newEvent.date, time: newEvent.time || null, repeat: newEvent.repeat === "none" ? null : newEvent.repeat, author: "Иван", spaceId: space.id };
             setEvents(evs => ({ ...evs, [space.id]: [...(evs[space.id] || []), ev].sort((a, b) => a.date.localeCompare(b.date)) }));
             goBack(); showToast(t.eventCreated);
           }} style={{ width: "100%", padding: "14px 0", borderRadius: 12, border: "none", background: "#378ADD", color: "#fff", fontSize: 16, fontWeight: 600, cursor: "pointer", opacity: canSave ? 1 : 0.4 }}

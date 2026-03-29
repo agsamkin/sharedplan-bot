@@ -72,6 +72,7 @@ def format_conflict_warning(conflicts: list[Event], lang: str = "ru") -> str:
 def format_confirmation(
     title: str, event_date: date, event_time: time | None,
     transcript: str | None = None, conflict_warning: str | None = None,
+    recurrence_rule: str | None = None,
     lang: str = "ru",
 ) -> str:
     """Карточка подтверждения события."""
@@ -85,13 +86,19 @@ def format_confirmation(
     lines.append(f"📅 {format_date_with_weekday(event_date, lang)}")
     if event_time is not None:
         lines.append(f"⏰ {event_time.strftime('%H:%M')}")
+    if recurrence_rule:
+        from app.i18n import get_recurrence_label
+        label = get_recurrence_label(lang, recurrence_rule)
+        if label:
+            lines.append(f"🔄 {label}")
     lines.append(t(lang, "fmt.confirmation.publish"))
     return "\n".join(lines)
 
 
 def format_notification(
     space_name: str, title: str, event_date: date, event_time: time | None,
-    creator_name: str, lang: str = "ru",
+    creator_name: str, recurrence_rule: str | None = None,
+    lang: str = "ru",
 ) -> str:
     """Уведомление участников о новом событии."""
     lines = [
@@ -101,6 +108,11 @@ def format_notification(
     ]
     if event_time is not None:
         lines.append(f"⏰ {event_time.strftime('%H:%M')}")
+    if recurrence_rule:
+        from app.i18n import get_recurrence_label
+        label = get_recurrence_label(lang, recurrence_rule)
+        if label:
+            lines.append(f"🔄 {label}")
     lines.append(t(lang, "fmt.notification.added_by", name=creator_name))
     return "\n".join(lines)
 

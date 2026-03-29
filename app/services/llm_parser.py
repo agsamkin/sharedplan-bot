@@ -31,6 +31,15 @@ class ParsedEvent(BaseModel):
             raise ValueError(f"Дата слишком далеко в будущем (максимум {max_date})")
         return v
 
+    recurrence_rule: Optional[str] = Field(default=None, alias="recurrence_rule")
+
+    @field_validator("recurrence_rule")
+    @classmethod
+    def validate_recurrence_rule(cls, v: str | None) -> str | None:
+        if v is not None and v not in ("daily", "weekly", "biweekly", "monthly", "yearly"):
+            raise ValueError(f"Недопустимое значение recurrence_rule: {v}")
+        return v
+
 
 class ParseError(Exception):
     def __init__(

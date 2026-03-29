@@ -180,7 +180,7 @@ export function SpaceDetailPage() {
                 <ListItem
                   left={<DateBadge date={ev.event_date} />}
                   title={ev.title}
-                  subtitle={`${formatRelativeDate(ev.event_date, t)}${ev.event_time ? ` · ${formatTime(ev.event_time, t)}` : ''} · ${ev.creator_name}`}
+                  subtitle={`${formatRelativeDate(ev.event_date, t)}${ev.event_time ? ` · ${formatTime(ev.event_time, t)}` : ''}${ev.recurrence_rule ? ` · ${t.repeatOptions[ev.recurrence_rule] || ''}` : ''} · ${ev.creator_name}`}
                   right={<ChevronRight />}
                   onClick={() => navigate(`/events/${ev.id}`)}
                 />

@@ -125,6 +125,18 @@ export const translations = {
     titleTooLongDetail: 'Название слишком длинное (макс. 500 символов)',
     conflictWarning: 'На близкое время уже есть события:',
     eventCreateHintGeneric: 'Все участники пространства получат уведомление о новом событии.',
+
+    // Recurrence
+    repeat: 'Повтор',
+    repeatOptions: {
+      none: 'Не повторять',
+      daily: 'Каждый день',
+      weekly: 'Каждую неделю',
+      biweekly: 'Каждые 2 недели',
+      monthly: 'Каждый месяц',
+      yearly: 'Каждый год',
+    } as Record<string, string>,
+    deleteRecurringEventConfirm: 'Удалить «{title}» и все будущие повторения? Это действие нельзя отменить.',
   },
   en: {
     spaces: 'Spaces',
@@ -235,6 +247,18 @@ export const translations = {
     titleTooLongDetail: 'Title is too long (max 500 characters)',
     conflictWarning: 'There are events at a nearby time:',
     eventCreateHintGeneric: 'All space members will be notified about the new event.',
+
+    // Recurrence
+    repeat: 'Repeat',
+    repeatOptions: {
+      none: 'Never',
+      daily: 'Every day',
+      weekly: 'Every week',
+      biweekly: 'Every 2 weeks',
+      monthly: 'Every month',
+      yearly: 'Every year',
+    } as Record<string, string>,
+    deleteRecurringEventConfirm: 'Delete "{title}" and all future repetitions? This action cannot be undone.',
   },
 } as const
 

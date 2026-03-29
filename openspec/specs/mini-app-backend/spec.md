@@ -60,7 +60,11 @@ REST API бэкенд для Telegram Mini App: aiohttp web server, автори
 
 #### Scenario: Получение списка событий пространства
 - **WHEN** `GET /api/spaces/:space_id/events` от участника пространства
-- **THEN** возвращается JSON-объект `{ "events": [...], "total_count": N }`, где `events` — массив будущих событий (по умолчанию до 50, максимум 100), отсортированных по `event_date ASC, event_time ASC NULLS FIRST`, с полями: `id`, `title`, `event_date`, `event_time`, `created_by`, `creator_name`, `is_owner`; `total_count` — общее количество предстоящих событий в пространстве (без учёта лимита)
+- **THEN** возвращается JSON-объект `{ "events": [...], "total_count": N }`, где `events` — массив будущих событий (по умолчанию до 50, максимум 100), отсортированных по `event_date ASC, event_time ASC NULLS FIRST`, с полями: `id`, `title`, `event_date`, `event_time`, `created_by`, `creator_name`, `is_owner`, `recurrence_rule`, `parent_event_id`; `total_count` — общее количество предстоящих событий в пространстве (без учёта лимита). Дочерние вхождения (`parent_event_id != null`) НЕ возвращаются в списке — только родительские события и одноразовые
+
+#### Scenario: Список событий с повторяющимися
+- **WHEN** GET запрос списка событий пространства
+- **THEN** возвращаются только родительские и одноразовые события (без дочерних вхождений), каждое с полем `recurrence_rule`
 
 #### Scenario: Получение списка событий с параметром limit
 - **WHEN** `GET /api/spaces/:space_id/events?limit=20` от участника пространства
@@ -80,11 +84,23 @@ REST API бэкенд для Telegram Mini App: aiohttp web server, автори
 
 #### Scenario: Получение карточки события
 - **WHEN** `GET /api/events/:event_id` от участника пространства события
-- **THEN** возвращается JSON с полями: `id`, `title`, `event_date`, `event_time`, `created_by`, `creator_name`, `space_id`, `space_name`, `is_owner`, `created_at`
+- **THEN** возвращается JSON с полями: `id`, `title`, `event_date`, `event_time`, `created_by`, `creator_name`, `space_id`, `space_name`, `is_owner`, `created_at`, `recurrence_rule`, `parent_event_id`
+
+#### Scenario: Детали повторяющегося события
+- **WHEN** GET запрос к повторяющемуся событию
+- **THEN** ответ содержит `recurrence_rule: "weekly"` (или другое значение)
 
 #### Scenario: Редактирование события владельцем
 - **WHEN** `PUT /api/events/:event_id` с телом `{"title": "Новое название"}` от владельца события
-- **THEN** событие обновляется, неотправленные напоминания пересоздаются (при изменении даты/времени), участники получают уведомление через бота, возвращается обновлённое событие
+- **THEN** событие обновляется, неотправленные напоминания пересоздаются (при изменении даты/времени), участники получают уведомление через бота, возвращается обновлённое событие с `recurrence_rule`
+
+#### Scenario: Изменение правила повторения
+- **WHEN** PUT с `{"recurrence_rule": "monthly"}` для события с текущим `recurrence_rule: "weekly"`
+- **THEN** будущие дочерние вхождения пересоздаются по правилу `monthly`, возвращается обновлённое событие
+
+#### Scenario: Отключение повторения
+- **WHEN** PUT с `{"recurrence_rule": null}` для повторяющегося события
+- **THEN** все дочерние вхождения удаляются, событие становится одноразовым
 
 #### Scenario: Редактирование чужого события
 - **WHEN** `PUT /api/events/:event_id` от пользователя, не являющегося владельцем
@@ -92,7 +108,11 @@ REST API бэкенд для Telegram Mini App: aiohttp web server, автори
 
 #### Scenario: Удаление события владельцем
 - **WHEN** `DELETE /api/events/:event_id` от владельца события
-- **THEN** событие удаляется, связанные напоминания удаляются каскадно, участники получают уведомление через бота, возвращается `204 No Content`
+- **THEN** событие удаляется с каскадным удалением напоминаний и дочерних вхождений (через FK ON DELETE CASCADE), участники получают уведомление через бота, возвращается `204 No Content`
+
+#### Scenario: Удаление повторяющегося события
+- **WHEN** DELETE запрос к повторяющемуся событию
+- **THEN** удаляется родительское событие, все дочерние вхождения и их напоминания каскадно, возвращается 204
 
 #### Scenario: Удаление чужого события
 - **WHEN** `DELETE /api/events/:event_id` от пользователя, не являющегося владельцем
@@ -104,7 +124,19 @@ REST API бэкенд для Telegram Mini App: aiohttp web server, автори
 
 ### Requirement: Создание события через API
 
-Эндпоинт `POST /api/spaces/:space_id/events` SHALL создавать новое событие в указанном пространстве. Тело запроса: `{"title": "<string>", "event_date": "<YYYY-MM-DD>", "event_time": "<HH:MM>" | null}`. Хендлер SHALL проверять членство пользователя в пространстве, валидировать данные, вызывать `event_service.create_event()`, создавать напоминания через `event_service.create_reminders_for_event()`, отправлять уведомления участникам через бота.
+Создание события. Валидация: title (не пустой, ≤500), event_date (обязательный, YYYY-MM-DD), event_time (обязательный, HH:MM), **recurrence_rule (опциональный — daily, weekly, biweekly, monthly, yearly или null/отсутствует)**. Создать запись `events` с `recurrence_rule`. Если `recurrence_rule != null` — сгенерировать дочерние вхождения на 60 дней вперёд, создать напоминания для каждого вхождения. Уведомить участников. Вернуть 201 с созданным событием включая поле `recurrence_rule`.
+
+#### Scenario: Создание повторяющегося события через API
+- **WHEN** POST с `{"title": "Встреча", "event_date": "2026-04-01", "event_time": "15:00", "recurrence_rule": "weekly"}`
+- **THEN** создаётся родительское событие и дочерние вхождения, возвращается 201 с `recurrence_rule: "weekly"`
+
+#### Scenario: Создание одноразового события (обратная совместимость)
+- **WHEN** POST без поля `recurrence_rule` или с `recurrence_rule: null`
+- **THEN** создаётся одноразовое событие, поведение идентично текущему
+
+#### Scenario: Невалидное значение recurrence_rule
+- **WHEN** POST с `recurrence_rule: "every_3_days"`
+- **THEN** возвращается 400 с ошибкой валидации
 
 #### Scenario: Успешное создание события
 - **WHEN** `POST /api/spaces/:space_id/events` с телом `{"title": "Ужин", "event_date": "2026-04-10", "event_time": "19:00"}` от участника пространства
