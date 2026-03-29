@@ -15,6 +15,11 @@ from uuid import UUID
 from aiohttp import web
 from sqlalchemy import select
 
+from app.bot.formatting import (
+    format_date_short_with_weekday,
+    format_event_deleted_notification,
+    format_event_edited_notification,
+)
 from app.db.models import Event, Space, User, UserSpace
 from app.services import event_service, reminder_service
 
@@ -278,6 +283,11 @@ async def update_event(request: web.Request) -> web.Response:
     if not update_fields:
         return web.json_response({"error": "Нет полей для обновления"}, status=400)
 
+    # Сохраняем старые значения ДО обновления для формирования уведомления
+    old_title = event.title
+    old_event_date = event.event_date
+    old_event_time = event.event_time
+
     # Обновляем событие
     updated_event = await event_service.update_event(session, event_id, **update_fields)
 
@@ -285,15 +295,43 @@ async def update_event(request: web.Request) -> web.Response:
     if date_time_changed and updated_event:
         await reminder_service.recreate_reminders_for_event(session, updated_event, updated_event.space_id)
 
-    # Уведомляем участников пространства
+    # Уведомляем участников пространства с детальным описанием изменений
     if updated_event:
-        await _notify_space_members(
-            request,
-            session,
-            updated_event.space_id,
-            user_id,
-            f"📝 Событие изменено: {updated_event.title}",
-        )
+        # Собираем список изменений (field_label, old_formatted, new_formatted)
+        changes: list[tuple[str, str, str]] = []
+
+        if "title" in update_fields and update_fields["title"] != old_title:
+            changes.append(("Название", old_title, update_fields["title"]))
+
+        if "event_date" in update_fields and update_fields["event_date"] != old_event_date:
+            changes.append((
+                "Дата",
+                format_date_short_with_weekday(old_event_date),
+                format_date_short_with_weekday(update_fields["event_date"]),
+            ))
+
+        if "event_time" in update_fields and update_fields["event_time"] != old_event_time:
+            old_time_str = old_event_time.strftime("%H:%M") if old_event_time else "весь день"
+            new_time_str = update_fields["event_time"].strftime("%H:%M") if update_fields["event_time"] else "весь день"
+            changes.append(("Время", old_time_str, new_time_str))
+
+        if changes:
+            # Получаем название пространства и имя редактора
+            space = await session.get(Space, updated_event.space_id)
+            space_name = space.name if space else ""
+            editor = await session.get(User, user_id)
+            editor_name = editor.first_name if editor else "Неизвестный"
+
+            notification_text = format_event_edited_notification(
+                space_name=space_name,
+                title=updated_event.title,
+                changes=changes,
+                editor_name=editor_name,
+            )
+            await _notify_space_members(
+                request, session, updated_event.space_id, user_id,
+                notification_text,
+            )
 
     # Проверяем конфликты при изменении даты/времени
     conflicts_data = []
@@ -344,13 +382,26 @@ async def delete_event(request: web.Request) -> web.Response:
             return web.json_response({"error": "Событие не найдено"}, status=404)
         return web.json_response({"error": "Только владелец может удалить событие"}, status=403)
 
+    # Получаем название пространства и имя удалившего для уведомления
+    space = await session.get(Space, event.space_id)
+    space_name = space.name if space else ""
+    editor = await session.get(User, user_id)
+    editor_name = editor.first_name if editor else "Неизвестный"
+
     # Уведомляем участников ДО удаления
+    notification_text = format_event_deleted_notification(
+        space_name=space_name,
+        title=event.title,
+        editor_name=editor_name,
+        event_date=event.event_date,
+        event_time=event.event_time,
+    )
     await _notify_space_members(
         request,
         session,
         event.space_id,
         user_id,
-        f"🗑 Событие удалено: {event.title}",
+        notification_text,
     )
 
     await event_service.delete_event(session, event_id)

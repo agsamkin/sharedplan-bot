@@ -130,26 +130,42 @@ def format_event_manage_card(
 
 
 def format_event_edited_notification(
-    space_name: str, title: str, field_label: str,
-    old_value: str, new_value: str, editor_name: str,
+    space_name: str, title: str,
+    changes: list[tuple[str, str, str]],
+    editor_name: str,
 ) -> str:
-    """Уведомление участников об изменении события."""
+    """Уведомление участников об изменении события.
+
+    changes — список кортежей (field_label, old_value, new_value),
+    по одной строке 🔄 на каждое изменённое поле.
+    """
     lines = [
         f"✏️ Событие изменено в «{space_name}»!\n",
         f"📝 {title}",
-        f"🔄 {field_label}: {old_value} → {new_value}",
-        f"👤 Изменил: {editor_name}",
     ]
+    for field_label, old_value, new_value in changes:
+        lines.append(f"🔄 {field_label}: {old_value} → {new_value}")
+    lines.append(f"👤 Изменил: {editor_name}")
     return "\n".join(lines)
 
 
 def format_event_deleted_notification(
     space_name: str, title: str, editor_name: str,
+    event_date: date | None = None, event_time: time | None = None,
 ) -> str:
-    """Уведомление участников об удалении события."""
+    """Уведомление участников об удалении события.
+
+    event_date и event_time — опциональные параметры для отображения
+    даты/времени удалённого события.
+    """
     lines = [
         f"🗑 Событие удалено в «{space_name}»!\n",
         f"📝 {title}",
-        f"👤 Удалил: {editor_name}",
     ]
+    if event_date is not None:
+        date_str = format_date_short_with_weekday(event_date)
+        if event_time is not None:
+            date_str += f", {event_time.strftime('%H:%M')}"
+        lines.append(f"📅 {date_str}")
+    lines.append(f"👤 Удалил: {editor_name}")
     return "\n".join(lines)
