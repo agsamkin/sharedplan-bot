@@ -23,7 +23,7 @@ export function EventCreatePage() {
 
   const titleTrimmed = title.trim()
   const isTitleTooLong = titleTrimmed.length > 500
-  const canSave = titleTrimmed.length > 0 && !isTitleTooLong && date !== '' && !saving
+  const canSave = titleTrimmed.length > 0 && !isTitleTooLong && date !== '' && time !== '' && !saving
 
   const isPastDate = useMemo(() => {
     if (!date) return false
@@ -59,7 +59,7 @@ export function EventCreatePage() {
       await createSpaceEvent(spaceId, {
         title: titleTrimmed,
         event_date: date,
-        event_time: time || null,
+        event_time: time,
       })
       showToast('Событие создано')
       navigate(-1)
@@ -122,7 +122,7 @@ export function EventCreatePage() {
           </div>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>
-              Время <span style={{ color: 'var(--text-tertiary, #b0b0b0)' }}>(необязательно)</span>
+              Время
             </label>
             <input
               type="time"
