@@ -31,17 +31,16 @@ async def list_spaces(request: web.Request) -> web.Response:
 
     spaces = await space_service.get_user_spaces(session, user_id)
 
-    # Для каждого пространства добавляем invite_code
-    result = []
-    for sp in spaces:
-        space_obj = await space_service.get_space_by_id(session, sp["id"])
-        result.append({
+    result = [
+        {
             "id": str(sp["id"]),
             "name": sp["name"],
             "role": sp["role"],
             "member_count": sp["member_count"],
-            "invite_code": space_obj.invite_code if space_obj else None,
-        })
+            "invite_code": sp.get("invite_code"),
+        }
+        for sp in spaces
+    ]
 
     return web.json_response(result)
 

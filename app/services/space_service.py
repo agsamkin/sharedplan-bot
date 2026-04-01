@@ -46,6 +46,7 @@ async def get_user_spaces(session: AsyncSession, user_id: int) -> list[dict]:
         select(
             Space.id,
             Space.name,
+            Space.invite_code,
             UserSpace.role,
             member_count_subq,
         )
@@ -59,6 +60,7 @@ async def get_user_spaces(session: AsyncSession, user_id: int) -> list[dict]:
             "name": row.name,
             "role": row.role,
             "member_count": row.member_count,
+            "invite_code": row.invite_code,
         }
         for row in rows
     ]
