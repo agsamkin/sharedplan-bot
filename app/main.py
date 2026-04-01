@@ -115,6 +115,8 @@ async def main() -> None:
     try:
         await dp.start_polling(bot, bot_username=bot_info.username)
     finally:
+        logger.info("Останавливаем scheduler...")
+        scheduler.shutdown(wait=False)
         logger.info("Останавливаем Mini App веб-сервер...")
         await runner.cleanup()
 
