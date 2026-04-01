@@ -22,13 +22,13 @@ _mock_models.User = MagicMock()
 _mock_models.UserSpace = MagicMock()
 sys.modules.setdefault("app.db.models", _mock_models)
 
-# Мокаем app.services до импорта routes
+# Импортируем реальный пакет app.services (__init__.py пустой),
+# чтобы setdefault не подменял его MagicMock-ом и не ломал
+# импорт app.services.* в других тестах.
+import app.services  # noqa: E402, F401
+
 _mock_event_service = MagicMock()
 _mock_reminder_service = MagicMock()
-_mock_services = MagicMock()
-_mock_services.event_service = _mock_event_service
-_mock_services.reminder_service = _mock_reminder_service
-sys.modules.setdefault("app.services", _mock_services)
 sys.modules.setdefault("app.services.event_service", _mock_event_service)
 sys.modules.setdefault("app.services.reminder_service", _mock_reminder_service)
 
@@ -58,6 +58,7 @@ def _make_event(
     ev.created_by = created_by
     ev.created_at = datetime(2026, 3, 29, 12, 0, 0)
     ev.space_id = uuid.uuid4()
+    ev.recurrence_rule = None
     return ev
 
 

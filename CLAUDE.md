@@ -44,9 +44,12 @@ alembic upgrade head              # применить все миграции
 alembic revision --autogenerate -m "description"  # создать миграцию
 
 # Тесты
-pytest tests/                     # все тесты
-pytest tests/test_auth.py         # конкретный файл
+pip install -r requirements-dev.txt  # установка dev-зависимостей (pytest, pytest-cov)
+pytest                               # все тесты
+pytest tests/test_auth.py            # конкретный файл
 pytest tests/test_auth.py::test_name -v  # конкретный тест
+pytest --cov                         # тесты с отчётом покрытия
+pytest --cov --cov-report=html       # тесты + HTML-отчёт в htmlcov/
 
 # Mini App frontend (из mini_app/frontend/)
 npm install                       # установка зависимостей

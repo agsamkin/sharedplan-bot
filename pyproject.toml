@@ -1,0 +1,27 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "asyncio: async test",
+]
+
+[tool.coverage.run]
+source = ["app", "mini_app"]
+omit = [
+    "tests/*",
+    "alembic/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+]
+omit = [
+    "tests/*",
+    "alembic/*",
+]
