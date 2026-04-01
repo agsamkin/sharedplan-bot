@@ -1,7 +1,9 @@
-"""Тесты сервиса напоминаний — format_reminder_message и константы."""
+"""Тесты сервиса напоминаний — format_reminder_message, константы, CRUD."""
 
 import sys
-from datetime import date, time
+import uuid
+from datetime import date, datetime, time, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -23,6 +25,10 @@ for _key in ["app.config", "app.db.engine"]:
 from app.services.reminder_service import (  # noqa: E402
     OFFSETS,
     VALID_KEYS,
+    create_reminders_for_event,
+    recreate_reminders_for_event,
+    get_due_reminders,
+    mark_sent,
     format_reminder_message,
 )
 
@@ -127,3 +133,130 @@ class TestFormatReminderMessage:
             )
             assert isinstance(msg, str)
             assert len(msg) > 10
+
+
+# ── Async CRUD tests ──
+
+def _make_event(event_time=time(15, 0), event_date=None, event_id=None):
+    e = MagicMock()
+    e.id = event_id or uuid.uuid4()
+    e.event_date = event_date or date(2026, 6, 1)
+    e.event_time = event_time
+    e.space_id = uuid.uuid4()
+    return e
+
+
+def _make_user_row(user_id, settings_dict):
+    row = MagicMock()
+    row.id = user_id
+    row.reminder_settings = settings_dict
+    return row
+
+
+_FAR_FUTURE = date(2026, 6, 1)
+_FIXED_NOW = datetime(2026, 4, 1, 12, 0, tzinfo=__import__("zoneinfo").ZoneInfo("Europe/Moscow"))
+
+
+class TestCreateRemindersForEvent:
+    @pytest.mark.asyncio
+    @patch("app.services.reminder_service.datetime")
+    async def test_timed_event_creates_reminders(self, mock_dt):
+        mock_dt.now.return_value = _FIXED_NOW
+        mock_dt.combine = datetime.combine
+
+        session = AsyncMock()
+        rows = [_make_user_row(1, {"1h": True, "30m": True})]
+        session.execute = AsyncMock(return_value=MagicMock(all=MagicMock(return_value=rows)))
+
+        event = _make_event(event_time=time(15, 0), event_date=_FAR_FUTURE)
+        count = await create_reminders_for_event(session, event, event.space_id)
+        assert count == 2
+        assert session.add.call_count == 2
+
+    @pytest.mark.asyncio
+    @patch("app.services.reminder_service.datetime")
+    async def test_allday_event_creates_1d_only(self, mock_dt):
+        mock_dt.now.return_value = _FIXED_NOW
+        mock_dt.combine = datetime.combine
+
+        session = AsyncMock()
+        rows = [_make_user_row(1, {"1d": True, "1h": True})]
+        session.execute = AsyncMock(return_value=MagicMock(all=MagicMock(return_value=rows)))
+
+        event = _make_event(event_time=None, event_date=_FAR_FUTURE)
+        count = await create_reminders_for_event(session, event, event.space_id)
+        assert count == 1
+
+    @pytest.mark.asyncio
+    @patch("app.services.reminder_service.datetime")
+    async def test_past_remind_at_skipped(self, mock_dt):
+        mock_dt.now.return_value = _FIXED_NOW
+        mock_dt.combine = datetime.combine
+
+        session = AsyncMock()
+        rows = [_make_user_row(1, {"1h": True})]
+        session.execute = AsyncMock(return_value=MagicMock(all=MagicMock(return_value=rows)))
+
+        event = _make_event(event_time=time(12, 30), event_date=date(2026, 4, 1))
+        count = await create_reminders_for_event(session, event, event.space_id)
+        assert count == 0
+
+    @pytest.mark.asyncio
+    @patch("app.services.reminder_service.datetime")
+    async def test_no_settings_creates_nothing(self, mock_dt):
+        mock_dt.now.return_value = _FIXED_NOW
+        mock_dt.combine = datetime.combine
+
+        session = AsyncMock()
+        rows = [_make_user_row(1, {})]
+        session.execute = AsyncMock(return_value=MagicMock(all=MagicMock(return_value=rows)))
+
+        event = _make_event(event_time=time(15, 0), event_date=_FAR_FUTURE)
+        count = await create_reminders_for_event(session, event, event.space_id)
+        assert count == 0
+
+
+class TestRecreateReminders:
+    @pytest.mark.asyncio
+    @patch("app.services.reminder_service.create_reminders_for_event", new_callable=AsyncMock)
+    async def test_deletes_and_recreates(self, mock_create):
+        mock_create.return_value = 3
+        session = AsyncMock()
+        event = _make_event()
+        space_id = uuid.uuid4()
+
+        count = await recreate_reminders_for_event(session, event, space_id)
+        assert count == 3
+        session.execute.assert_awaited_once()
+        mock_create.assert_awaited_once_with(session, event, space_id)
+
+
+class TestGetDueReminders:
+    @pytest.mark.asyncio
+    async def test_returns_results(self):
+        session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = [("r1",), ("r2",)]
+        session.execute = AsyncMock(return_value=mock_result)
+
+        result = await get_due_reminders(session)
+        assert len(result) == 2
+
+
+class TestMarkSent:
+    @pytest.mark.asyncio
+    async def test_marks_existing(self):
+        session = AsyncMock()
+        reminder = MagicMock()
+        reminder.sent = False
+        session.get = AsyncMock(return_value=reminder)
+
+        await mark_sent(session, uuid.uuid4())
+        assert reminder.sent is True
+
+    @pytest.mark.asyncio
+    async def test_noop_for_missing(self):
+        session = AsyncMock()
+        session.get = AsyncMock(return_value=None)
+
+        await mark_sent(session, uuid.uuid4())
