@@ -113,8 +113,11 @@ async def get_upcoming_events(
 
 
 async def count_upcoming_events(session: AsyncSession, space_id: UUID) -> int:
-    """Подсчитать общее количество предстоящих событий пространства."""
-    await _advance_stale_recurring_parents(session, space_id)
+    """Подсчитать общее количество предстоящих событий пространства.
+
+    Примечание: вызывающий код должен вызвать get_upcoming_events (или
+    _advance_stale_recurring_parents) перед этим методом в рамках одной сессии.
+    """
     stmt = select(func.count()).select_from(Event).where(
         *_upcoming_events_filter(space_id)
     )
