@@ -174,14 +174,19 @@ async def find_conflicting_events(
     return list(result.scalars().all())
 
 
+_UPDATABLE_EVENT_FIELDS = {"title", "event_date", "event_time", "recurrence_rule"}
+
+
 async def update_event(
     session: AsyncSession, event_id: UUID, **fields
 ) -> Event | None:
-    """Обновить поля события (title, event_date, event_time)."""
+    """Обновить поля события (title, event_date, event_time, recurrence_rule)."""
     event = await session.get(Event, event_id)
     if not event:
         return None
     for key, value in fields.items():
+        if key not in _UPDATABLE_EVENT_FIELDS:
+            raise ValueError(f"Недопустимое поле для обновления: {key}")
         setattr(event, key, value)
     await session.flush()
     return event
