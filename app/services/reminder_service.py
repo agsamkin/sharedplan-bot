@@ -129,6 +129,7 @@ async def get_due_reminders(session: AsyncSession, limit: int = 50) -> list:
         )
         .order_by(ScheduledReminder.remind_at)
         .limit(limit)
+        .with_for_update(of=ScheduledReminder, skip_locked=True)
     )
     result = await session.execute(stmt)
     return list(result.all())
