@@ -87,6 +87,8 @@ async def _call_llm(messages: list[dict[str, str]]) -> str:
                 duration_ms,
             )
 
+            if not response.choices or not response.choices[0].message:
+                raise ParseError("invalid_json")
             return response.choices[0].message.content or ""
 
         except APITimeoutError as e:
