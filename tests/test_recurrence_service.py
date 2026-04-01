@@ -215,12 +215,25 @@ class TestGenerateOccurrences:
         mock_reminder_svc.create_reminders_for_event = AsyncMock(return_value=0)
 
         session = AsyncMock()
-        # scalar_one_or_none returns existing id → skip
-        session.execute = AsyncMock(
-            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=uuid.uuid4()))
-        )
-
+        # Batch-запрос возвращает все целевые даты как существующие → skip all
         event = _make_parent_event(event_date=date(2026, 4, 1), rule="weekly")
+
+        # Вычислить ожидаемые даты (как делает generate_occurrences)
+        from app.services.recurrence_service import next_occurrence_date
+        expected_dates = []
+        td = next_occurrence_date(date(2026, 4, 1), "weekly")
+        horizon = _FIXED_NOW.date() + timedelta(days=30)
+        while td <= horizon:
+            expected_dates.append(td)
+            td = next_occurrence_date(td, "weekly")
+
+        # scalars().all() возвращает все существующие даты
+        mock_scalars = MagicMock()
+        mock_scalars.all.return_value = expected_dates
+        mock_result = MagicMock()
+        mock_result.scalars.return_value = mock_scalars
+        session.execute = AsyncMock(return_value=mock_result)
+
         count = await generate_occurrences(session, event, horizon_days=30)
         assert count == 0
 

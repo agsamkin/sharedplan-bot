@@ -95,22 +95,32 @@ async def generate_occurrences(
     horizon = today + timedelta(days=horizon_days)
 
     rule = event.recurrence_rule
+
+    # Вычислить все целевые даты заранее
+    target_dates = []
     target_date = next_occurrence_date(event.event_date, rule)
-    count = 0
-
     while target_date <= horizon:
-        # Проверить, существует ли уже вхождение на эту дату
-        stmt = select(Event.id).where(
-            Event.parent_event_id == event.id,
-            Event.event_date == target_date,
-        )
-        existing = (await session.execute(stmt)).scalar_one_or_none()
+        target_dates.append(target_date)
+        target_date = next_occurrence_date(target_date, rule)
 
-        if existing is None:
+    if not target_dates:
+        return 0
+
+    # Batch-проверка существующих вхождений (1 запрос вместо N)
+    stmt = select(Event.event_date).where(
+        Event.parent_event_id == event.id,
+        Event.event_date.in_(target_dates),
+    )
+    existing_dates = set((await session.execute(stmt)).scalars().all())
+
+    # Создать только отсутствующие вхождения
+    new_occurrences = []
+    for td in target_dates:
+        if td not in existing_dates:
             occurrence = Event(
                 space_id=event.space_id,
                 title=event.title,
-                event_date=target_date,
+                event_date=td,
                 event_time=event.event_time,
                 created_by=event.created_by,
                 raw_input=None,
@@ -118,19 +128,21 @@ async def generate_occurrences(
                 parent_event_id=event.id,
             )
             session.add(occurrence)
-            await session.flush()
+            new_occurrences.append(occurrence)
 
+    if new_occurrences:
+        await session.flush()  # Один flush вместо N
+
+        for occurrence in new_occurrences:
             await reminder_service.create_reminders_for_event(
                 session, occurrence, event.space_id,
             )
-            count += 1
             logger.debug(
                 "Создано вхождение %s на %s для события %s",
-                occurrence.id, target_date, event.id,
+                occurrence.id, occurrence.event_date, event.id,
             )
 
-        target_date = next_occurrence_date(target_date, rule)
-
+    count = len(new_occurrences)
     logger.info(
         "Сгенерировано %d вхождений для события %s (горизонт %d дней)",
         count, event.id, horizon_days,
