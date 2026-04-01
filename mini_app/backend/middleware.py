@@ -58,7 +58,7 @@ async def auth_middleware(request: web.Request, handler) -> web.StreamResponse:
     except ValueError as e:
         logger.warning("Ошибка авторизации Mini App: %s", e)
         return web.json_response(
-            {"error": f"Ошибка авторизации: {e}"},
+            {"error": "Ошибка авторизации"},
             status=401,
         )
 
