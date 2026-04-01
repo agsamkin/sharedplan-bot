@@ -3,7 +3,7 @@ import sys
 import re
 
 result = subprocess.run(
-    ["pytest", "--cov=app", "--cov-report=term"],
+    ["pytest", "--cov=app", "--cov=mini_app", "--cov-report=term"],
     capture_output=True, text=True
 )
 
