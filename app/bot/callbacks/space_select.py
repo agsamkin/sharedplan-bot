@@ -33,10 +33,17 @@ async def on_space_select(
     data = await state.get_data()
     lang = data.get("lang", lang)
 
-    space_id = UUID(parts[1])
+    try:
+        space_id = UUID(parts[1])
+    except ValueError:
+        await callback.answer(t(lang, "cb.space.unknown_action"))
+        return
     action = parts[2]
 
     if action == "event":
+        if "parsed_date" not in data or "parsed_title" not in data:
+            await callback.answer(t(lang, "cb.space.unknown_action"))
+            return
         event_date = date.fromisoformat(data["parsed_date"])
         event_time = time.fromisoformat(data["parsed_time"]) if data.get("parsed_time") else None
         transcript = data.get("transcript")
