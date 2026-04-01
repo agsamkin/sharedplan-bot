@@ -191,9 +191,8 @@ async def delete_space(request: web.Request) -> web.Response:
     admin_name = admin_user.first_name if admin_user else "Неизвестный"
 
     await space_service.delete_space(session, space_id)
-    await session.commit()
 
-    # Уведомляем участников (fire-and-forget, после commit)
+    # Уведомляем участников (fire-and-forget, commit через middleware)
     bot = request.app.get("bot")
     if bot and members:
         for member in members:
