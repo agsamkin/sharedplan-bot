@@ -38,12 +38,16 @@ async def on_event_confirm(
     data = await state.get_data()
     lang = data.get("lang", lang)
 
-    if not data.get("parsed_title"):
+    if not data.get("parsed_title") or "space_id" not in data or "parsed_date" not in data:
         await callback.answer(t(lang, "cb.confirm.no_data"))
         return
 
-    space_id = UUID(data["space_id"])
-    event_date = date.fromisoformat(data["parsed_date"])
+    try:
+        space_id = UUID(data["space_id"])
+        event_date = date.fromisoformat(data["parsed_date"])
+    except (ValueError, KeyError):
+        await callback.answer(t(lang, "cb.confirm.no_data"))
+        return
     event_time = time.fromisoformat(data["parsed_time"]) if data.get("parsed_time") else None
 
     event = await event_service.create_event(
@@ -171,11 +175,15 @@ async def on_event_past_confirm(
     data = await state.get_data()
     lang = data.get("lang", lang)
 
-    if not data.get("parsed_title"):
+    if not data.get("parsed_title") or "parsed_date" not in data:
         await callback.answer(t(lang, "cb.confirm.no_data"))
         return
 
-    event_date = date.fromisoformat(data["parsed_date"])
+    try:
+        event_date = date.fromisoformat(data["parsed_date"])
+    except (ValueError, KeyError):
+        await callback.answer(t(lang, "cb.confirm.no_data"))
+        return
     event_time = time.fromisoformat(data["parsed_time"]) if data.get("parsed_time") else None
     transcript = data.get("transcript")
 
