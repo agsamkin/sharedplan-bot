@@ -119,6 +119,10 @@ class Event(Base):
     __table_args__ = (
         Index("idx_events_space_date", "space_id", "event_date"),
         Index("idx_events_parent", "parent_event_id"),
+        CheckConstraint(
+            "recurrence_rule IS NULL OR recurrence_rule IN ('daily', 'weekly', 'biweekly', 'monthly', 'yearly')",
+            name="ck_events_recurrence_rule",
+        ),
     )
 
 
