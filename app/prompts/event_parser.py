@@ -141,6 +141,11 @@ def build_system_prompt(current_date: date, current_time: time | None = None) ->
     return header + "\n\n" + examples + footer
 
 
+def _wrap_user_input(text: str) -> str:
+    """Изолировать пользовательский ввод XML-тегами для защиты от prompt injection."""
+    return f"<user_input>{text}</user_input>"
+
+
 def build_messages(
     user_text: str,
     current_date: date,
@@ -150,7 +155,7 @@ def build_messages(
     system_content = build_system_prompt(current_date, current_time)
     return [
         {"role": "system", "content": system_content},
-        {"role": "user", "content": user_text},
+        {"role": "user", "content": _wrap_user_input(user_text)},
     ]
 
 
@@ -163,5 +168,5 @@ def build_messages_reinforced(
     system_content = build_system_prompt(current_date, current_time) + REINFORCED_SUFFIX
     return [
         {"role": "system", "content": system_content},
-        {"role": "user", "content": user_text},
+        {"role": "user", "content": _wrap_user_input(user_text)},
     ]

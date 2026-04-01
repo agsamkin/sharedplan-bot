@@ -177,7 +177,7 @@ class TestBuildMessages:
         assert len(msgs) == 2
         assert msgs[0]["role"] == "system"
         assert msgs[1]["role"] == "user"
-        assert msgs[1]["content"] == "Встреча завтра"
+        assert msgs[1]["content"] == "<user_input>Встреча завтра</user_input>"
 
     def test_build_messages_system_content(self):
         msgs = build_messages("Тест", date(2026, 3, 29), time(14, 0))
