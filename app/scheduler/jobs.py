@@ -28,15 +28,18 @@ async def process_due_reminders(
                     lang=user_language or "en",
                 )
                 await bot.send_message(reminder.user_id, text)
+                await mark_sent(session, reminder.id)
             except Exception as e:
-                logger.warning(
-                    "Не удалось отправить напоминание: user_id=%s reminder_id=%s error_type=%s error=%s",
+                logger.error(
+                    "Напоминание потеряно (помечено sent без доставки): "
+                    "user_id=%s reminder_id=%s error_type=%s error=%s",
                     reminder.user_id,
                     reminder.id,
                     type(e).__name__,
                     e,
                 )
-            finally:
+                # Помечаем sent=True чтобы избежать бесконечных повторов,
+                # но логируем как ERROR для мониторинга
                 await mark_sent(session, reminder.id)
 
         await session.commit()
