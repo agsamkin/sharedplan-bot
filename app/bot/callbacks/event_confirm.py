@@ -50,23 +50,31 @@ async def on_event_confirm(
         return
     event_time = time.fromisoformat(data["parsed_time"]) if data.get("parsed_time") else None
 
-    event = await event_service.create_event(
-        session=session,
-        space_id=space_id,
-        title=data["parsed_title"],
-        event_date=event_date,
-        event_time=event_time,
-        created_by=callback.from_user.id,
-        raw_input=data.get("raw_input"),
-        recurrence_rule=data.get("recurrence_rule"),
-    )
+    try:
+        event = await event_service.create_event(
+            session=session,
+            space_id=space_id,
+            title=data["parsed_title"],
+            event_date=event_date,
+            event_time=event_time,
+            created_by=callback.from_user.id,
+            raw_input=data.get("raw_input"),
+            recurrence_rule=data.get("recurrence_rule"),
+        )
 
-    await reminder_service.create_reminders_for_event(session, event, space_id)
+        await reminder_service.create_reminders_for_event(session, event, space_id)
 
-    # Генерация вхождений для повторяющихся событий
-    if event.recurrence_rule:
-        from app.services import recurrence_service
-        await recurrence_service.generate_occurrences(session, event)
+        # Генерация вхождений для повторяющихся событий
+        if event.recurrence_rule:
+            from app.services import recurrence_service
+            await recurrence_service.generate_occurrences(session, event)
+    except Exception:
+        await session.rollback()
+        logger.exception("Ошибка при создании события — откат транзакции")
+        await callback.message.edit_text(t(lang, "cb.confirm.error"))
+        await state.clear()
+        await callback.answer()
+        return
 
     await callback.message.edit_text(t(lang, "cb.confirm.published"))
     await state.clear()
