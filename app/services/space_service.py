@@ -2,6 +2,7 @@ import secrets
 from uuid import UUID
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Space, User, UserSpace
@@ -86,7 +87,11 @@ async def join_space(
         return None
     membership = UserSpace(user_id=user_id, space_id=space_id, role="member")
     session.add(membership)
-    await session.flush()
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        return None
     return membership
 
 
