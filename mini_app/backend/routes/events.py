@@ -78,13 +78,13 @@ async def list_events(request: web.Request) -> web.Response:
         user_id, space_id, len(events), total_count,
     )
 
-    # Собираем имена создателей
+    # Собираем имена создателей одним запросом
     creator_ids = {e.created_by for e in events}
     creators = {}
-    for cid in creator_ids:
-        user = await session.get(User, cid)
-        if user:
-            creators[cid] = user.first_name
+    if creator_ids:
+        stmt = select(User.id, User.first_name).where(User.id.in_(creator_ids))
+        rows = await session.execute(stmt)
+        creators = {row.id: row.first_name for row in rows}
 
     result = [
         _serialize_event(
