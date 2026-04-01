@@ -51,6 +51,14 @@ async def update_reminder_settings(request: web.Request) -> web.Response:
     if not isinstance(body, dict):
         return web.json_response({"error": "Ожидается JSON-объект"}, status=400)
 
+    valid_keys = {"1d", "2h", "1h", "30m", "15m", "0m"}
+    invalid_keys = set(body.keys()) - valid_keys
+    if invalid_keys:
+        return web.json_response(
+            {"error": f"Недопустимые ключи: {', '.join(sorted(invalid_keys))}"},
+            status=400,
+        )
+
     # Мержим: обновляем только переданные ключи
     current_settings = dict(user.reminder_settings or {})
     current_settings.update(body)
